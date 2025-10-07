@@ -26,14 +26,22 @@
             <div class="flex flex-col bg-white rounded-xl shadow-md overflow-hidden">
                 <div class="p-4 border-b">
                      <h2 class="font-semibold text-lg flex items-center"><i data-lucide="bot" class="w-5 h-5 mr-2 text-green-600"></i> Asisten Belajar AI</h2>
-                     <p class="text-sm text-gray-500">Tanyakan apapun tentang materi di samping!</p>
+                     <!-- Dropdown untuk memilih Gem/Persona -->
+                     <div class="mt-2">
+                         <label for="gem-selector" class="text-sm font-medium text-gray-600">Pilih Persona AI:</label>
+                         <select id="gem-selector" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                             <% for (const key in gems) { %>
+                                <option value="<%= key %>"><%= gems[key].name %></option>
+                             <% } %>
+                         </select>
+                     </div>
                 </div>
                 <div id="chat-history" class="flex-1 p-4 overflow-y-auto space-y-4">
                     <!-- Pesan Awal dari AI -->
                     <div class="flex items-start gap-3">
                         <div class="p-2 bg-green-100 rounded-full"><i data-lucide="bot" class="w-5 h-5 text-green-700"></i></div>
                         <div class="bg-gray-100 p-3 rounded-lg max-w-lg">
-                            <p class="text-sm">Halo! Saya adalah asisten AI Anda. Silakan baca materi di sebelah kiri dan ajukan pertanyaan apa pun yang Anda miliki.</p>
+                            <p class="text-sm">Halo! Saya adalah asisten AI Anda. Silakan pilih persona saya di atas, baca materi, dan ajukan pertanyaan apa pun yang Anda miliki.</p>
                         </div>
                     </div>
                 </div>
@@ -56,6 +64,7 @@
     const chatHistory = document.getElementById('chat-history');
     const sourceTextContainer = document.getElementById('source-text');
     const submitButton = document.getElementById('chat-submit-button');
+    const gemSelector = document.getElementById('gem-selector'); // Mengambil elemen dropdown
 
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -63,23 +72,21 @@
         if (!question) return;
 
         const sourceText = sourceTextContainer.innerText;
+        const gem = gemSelector.value; // Mengambil persona yang dipilih
         
-        // Tampilkan pertanyaan pengguna
         appendMessage(question, 'user');
         chatInput.value = '';
         submitButton.disabled = true;
         
-        // Tampilkan indikator loading
         appendMessage('...', 'ai', true);
 
         try {
             const response = await fetch('/api/ask-ai', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sourceText, question })
+                body: JSON.stringify({ sourceText, question, gem }) // Mengirim persona ke backend
             });
 
-            // Hapus indikator loading
             removeLoadingIndicator();
 
             if (!response.ok) {
@@ -109,7 +116,7 @@
             iconDiv.innerHTML = `<i data-lucide="user" class="w-5 h-5 text-blue-700"></i>`;
             textDiv.className = 'bg-blue-500 text-white p-3 rounded-lg max-w-lg';
             textDiv.innerText = text;
-        } else { // ai
+        } else {
             messageWrapper.className = 'flex items-start gap-3';
             if(isLoading) messageWrapper.id = 'loading-indicator';
             iconDiv.className = 'p-2 bg-green-100 rounded-full';
@@ -118,10 +125,12 @@
             textDiv.innerHTML = isLoading ? `<div class="dot-flashing"></div>` : text.replace(/\n/g, '<br>');
         }
 
-        messageWrapper.appendChild(iconDiv);
-        messageWrapper.appendChild(textDiv);
         if (sender === 'user') {
-            messageWrapper.insertBefore(textDiv, iconDiv);
+            messageWrapper.appendChild(textDiv);
+            messageWrapper.appendChild(iconDiv);
+        } else {
+            messageWrapper.appendChild(iconDiv);
+            messageWrapper.appendChild(textDiv);
         }
         chatHistory.appendChild(messageWrapper);
         lucide.createIcons();
@@ -137,43 +146,12 @@
 </script>
 
 <style>
-.dot-flashing {
-    position: relative;
-    width: 10px; height: 10px;
-    border-radius: 5px;
-    background-color: #9880ff;
-    color: #9880ff;
-    animation: dot-flashing 1s infinite linear alternate;
-    animation-delay: .5s;
-}
-.dot-flashing::before, .dot-flashing::after {
-    content: '';
-    display: inline-block;
-    position: absolute;
-    top: 0;
-}
-.dot-flashing::before {
-    left: -15px;
-    width: 10px; height: 10px;
-    border-radius: 5px;
-    background-color: #9880ff;
-    color: #9880ff;
-    animation: dot-flashing 1s infinite alternate;
-    animation-delay: 0s;
-}
-.dot-flashing::after {
-    left: 15px;
-    width: 10px; height: 10px;
-    border-radius: 5px;
-    background-color: #9880ff;
-    color: #9880ff;
-    animation: dot-flashing 1s infinite alternate;
-    animation-delay: 1s;
-}
-@keyframes dot-flashing {
-    0% { background-color: #5C6BC0; }
-    50%, 100% { background-color: #CFD8DC; }
-}
+.dot-flashing { position: relative; width: 10px; height: 10px; border-radius: 5px; background-color: #9880ff; color: #9880ff; animation: dot-flashing 1s infinite linear alternate; animation-delay: .5s; }
+.dot-flashing::before, .dot-flashing::after { content: ''; display: inline-block; position: absolute; top: 0; }
+.dot-flashing::before { left: -15px; width: 10px; height: 10px; border-radius: 5px; background-color: #9880ff; color: #9880ff; animation: dot-flashing 1s infinite alternate; animation-delay: 0s; }
+.dot-flashing::after { left: 15px; width: 10px; height: 10px; border-radius: 5px; background-color: #9880ff; color: #9880ff; animation: dot-flashing 1s infinite alternate; animation-delay: 1s; }
+@keyframes dot-flashing { 0% { background-color: #5C6BC0; } 50%, 100% { background-color: #CFD8DC; } }
 </style>
 
 <%- include('../partials/footer') %>
+
