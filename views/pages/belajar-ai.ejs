@@ -1,0 +1,179 @@
+<%- include('../partials/header', {title: 'Belajar dengan AI'}) %>
+
+<div class="flex h-screen bg-gray-100">
+    <%- include('../partials/sidebar', {user: user, active: 'belajar-ai'}) %>
+    
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <%- include('../partials/topbar', {user: user, pageTitle: 'Belajar dengan AI'}) %>
+
+        <main class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 overflow-hidden">
+            <!-- Kolom Sumber Materi -->
+            <div class="flex flex-col bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-4 border-b">
+                    <h2 class="font-semibold text-lg flex items-center"><i data-lucide="book-marked" class="w-5 h-5 mr-2 text-blue-600"></i> Sumber Materi</h2>
+                    <p class="text-sm text-gray-500">Proklamasi Kemerdekaan Indonesia</p>
+                </div>
+                <div id="source-text" class="p-4 overflow-y-auto text-sm text-gray-700 leading-relaxed">
+                    <p><strong>Proklamasi Kemerdekaan Indonesia</strong> dilaksanakan pada hari Jumat, 17 Agustus 1945 tahun Masehi, atau tanggal 17 Agustus 2605 menurut tahun Jepang, yang dibacakan oleh Soekarno dengan didampingi oleh Drs. Mohammad Hatta di sebuah rumah hibah dari Faradj bin Said bin Awadh Martak di Jalan Pegangsaan Timur No. 56, Jakarta Pusat.</p>
+                    <p class="mt-4">Naskah proklamasi ditandatangani oleh Soekarno (yang menuliskan namanya sebagai "Soekarno") dan Mohammad Hatta (yang menuliskan namanya sebagai "Moh. Hatta"). Naskah tersebut diketik oleh Sayuti Melik. Pada awalnya, proklamasi akan dibacakan di Lapangan Ikada, namun berhubung alasan keamanan maka dipindahkan ke kediaman Soekarno.</p>
+                    <p class="mt-4">Penyusunan teks Proklamasi dilakukan di rumah Laksamana Tadashi Maeda, seorang perwira tinggi Angkatan Laut Kekaisaran Jepang. Tiga orang yang menyusunnya adalah Soekarno, Mohammad Hatta, dan Achmad Soebardjo. Konsep naskah ditulis oleh Soekarno sendiri. Di ruang makan Maeda, hadir pula B.M. Diah, Sayuti Melik, Soekarni, dan Soediro. Soekarni mengusulkan agar yang menandatangani teks proklamasi adalah Soekarno dan Mohammad Hatta atas nama bangsa Indonesia.</p>
+                    <p class="mt-4">Bendera Pusaka, Sang Saka Merah Putih, dijahit oleh Ibu Fatmawati dan dikibarkan setelah proklamasi dibacakan. Peristiwa ini menjadi tonggak sejarah dimulainya perlawanan diplomatik dan bersenjata dari Revolusi Nasional Indonesia, yang berperang melawan pasukan Belanda dan warga sipil pro-Belanda, hingga Belanda secara resmi mengakui kemerdekaan Indonesia pada tahun 1949.</p>
+                </div>
+            </div>
+
+            <!-- Kolom Chat AI -->
+            <div class="flex flex-col bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-4 border-b">
+                     <h2 class="font-semibold text-lg flex items-center"><i data-lucide="bot" class="w-5 h-5 mr-2 text-green-600"></i> Asisten Belajar AI</h2>
+                     <p class="text-sm text-gray-500">Tanyakan apapun tentang materi di samping!</p>
+                </div>
+                <div id="chat-history" class="flex-1 p-4 overflow-y-auto space-y-4">
+                    <!-- Pesan Awal dari AI -->
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-green-100 rounded-full"><i data-lucide="bot" class="w-5 h-5 text-green-700"></i></div>
+                        <div class="bg-gray-100 p-3 rounded-lg max-w-lg">
+                            <p class="text-sm">Halo! Saya adalah asisten AI Anda. Silakan baca materi di sebelah kiri dan ajukan pertanyaan apa pun yang Anda miliki.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 border-t bg-gray-50">
+                    <form id="chat-form" class="flex items-center gap-2">
+                        <input id="chat-input" type="text" placeholder="Ketik pertanyaan Anda di sini..." class="w-full px-4 py-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500" required>
+                        <button type="submit" id="chat-submit-button" class="px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400">
+                            <i data-lucide="send" class="w-5 h-5"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatHistory = document.getElementById('chat-history');
+    const sourceTextContainer = document.getElementById('source-text');
+    const submitButton = document.getElementById('chat-submit-button');
+
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const question = chatInput.value.trim();
+        if (!question) return;
+
+        const sourceText = sourceTextContainer.innerText;
+        
+        // Tampilkan pertanyaan pengguna
+        appendMessage(question, 'user');
+        chatInput.value = '';
+        submitButton.disabled = true;
+        
+        // Tampilkan indikator loading
+        appendMessage('...', 'ai', true);
+
+        try {
+            const response = await fetch('/api/ask-ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sourceText, question })
+            });
+
+            // Hapus indikator loading
+            removeLoadingIndicator();
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Gagal mendapatkan jawaban dari AI.');
+            }
+
+            const data = await response.json();
+            appendMessage(data.answer, 'ai');
+
+        } catch (error) {
+            removeLoadingIndicator();
+            appendMessage(`Error: ${error.message}`, 'ai');
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+
+    function appendMessage(text, sender, isLoading = false) {
+        const messageWrapper = document.createElement('div');
+        const iconDiv = document.createElement('div');
+        const textDiv = document.createElement('div');
+        
+        if (sender === 'user') {
+            messageWrapper.className = 'flex items-start gap-3 justify-end';
+            iconDiv.className = 'p-2 bg-blue-100 rounded-full';
+            iconDiv.innerHTML = `<i data-lucide="user" class="w-5 h-5 text-blue-700"></i>`;
+            textDiv.className = 'bg-blue-500 text-white p-3 rounded-lg max-w-lg';
+            textDiv.innerText = text;
+        } else { // ai
+            messageWrapper.className = 'flex items-start gap-3';
+            if(isLoading) messageWrapper.id = 'loading-indicator';
+            iconDiv.className = 'p-2 bg-green-100 rounded-full';
+            iconDiv.innerHTML = `<i data-lucide="bot" class="w-5 h-5 text-green-700"></i>`;
+            textDiv.className = 'bg-gray-100 p-3 rounded-lg max-w-lg';
+            textDiv.innerHTML = isLoading ? `<div class="dot-flashing"></div>` : text.replace(/\n/g, '<br>');
+        }
+
+        messageWrapper.appendChild(iconDiv);
+        messageWrapper.appendChild(textDiv);
+        if (sender === 'user') {
+            messageWrapper.insertBefore(textDiv, iconDiv);
+        }
+        chatHistory.appendChild(messageWrapper);
+        lucide.createIcons();
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+    
+    function removeLoadingIndicator() {
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+    }
+</script>
+
+<style>
+.dot-flashing {
+    position: relative;
+    width: 10px; height: 10px;
+    border-radius: 5px;
+    background-color: #9880ff;
+    color: #9880ff;
+    animation: dot-flashing 1s infinite linear alternate;
+    animation-delay: .5s;
+}
+.dot-flashing::before, .dot-flashing::after {
+    content: '';
+    display: inline-block;
+    position: absolute;
+    top: 0;
+}
+.dot-flashing::before {
+    left: -15px;
+    width: 10px; height: 10px;
+    border-radius: 5px;
+    background-color: #9880ff;
+    color: #9880ff;
+    animation: dot-flashing 1s infinite alternate;
+    animation-delay: 0s;
+}
+.dot-flashing::after {
+    left: 15px;
+    width: 10px; height: 10px;
+    border-radius: 5px;
+    background-color: #9880ff;
+    color: #9880ff;
+    animation: dot-flashing 1s infinite alternate;
+    animation-delay: 1s;
+}
+@keyframes dot-flashing {
+    0% { background-color: #5C6BC0; }
+    50%, 100% { background-color: #CFD8DC; }
+}
+</style>
+
+<%- include('../partials/footer') %>
