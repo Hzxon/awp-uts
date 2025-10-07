@@ -1,0 +1,45 @@
+<%- include('../partials/header', {title: 'Dashboard'}) %>
+
+<div class="flex h-screen bg-gray-100">
+    <%- include('../partials/sidebar', {user: user, active: 'dashboard'}) %>
+    
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <%- include('../partials/topbar', {user: user, pageTitle: 'Dashboard'}) %>
+
+        <main class="flex-1 p-6 overflow-y-auto">
+             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                 <div class="p-6 bg-white rounded-xl shadow-md flex items-center space-x-4">
+                     <div class="p-3 bg-blue-100 rounded-full"><i data-lucide="users" class="w-6 h-6 text-blue-600"></i></div>
+                     <div>
+                         <p class="text-gray-500">Total Siswa</p>
+                         <p class="text-2xl font-bold">1,250</p>
+                     </div>
+                 </div>
+                  <div class="p-6 bg-white rounded-xl shadow-md flex items-center space-x-4">
+                     <div class="p-3 bg-green-100 rounded-full"><i data-lucide="user-check" class="w-6 h-6 text-green-600"></i></div>
+                     <div>
+                         <p class="text-gray-500">Total Guru</p>
+                         <p class="text-2xl font-bold">75</p>
+                     </div>
+                 </div>
+                  <div class="p-6 bg-white rounded-xl shadow-md flex items-center space-x-4">
+                     <div class="p-3 bg-yellow-100 rounded-full"><i data-lucide="book-open" class="w-6 h-6 text-yellow-600"></i></div>
+                     <div>
+                         <p class="text-gray-500">Mata Pelajaran</p>
+                         <p class="text-2xl font-bold">12</p>
+                     </div>
+                 </div>
+                 <div class="p-6 bg-white rounded-xl shadow-md flex items-center space-x-4">
+                     <div class="p-3 bg-indigo-100 rounded-full"><i data-lucide="school" class="w-6 h-6 text-indigo-600"></i></div>
+                     <div>
+                         <p class="text-gray-500">Jumlah Kelas</p>
+                         <p class="text-2xl font-bold">30</p>
+                     </div>
+                 </div>
+             </div>
+        </main>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

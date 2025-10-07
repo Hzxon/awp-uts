@@ -1,0 +1,15 @@
+<header class="flex items-center justify-between p-4 bg-white border-b">
+    <h1 class="text-xl font-semibold text-gray-700"><%= pageTitle %></h1>
+    <div class="flex items-center space-x-4">
+        <div class="text-right">
+           <!-- 2.b Menampilkan username & role -->
+           <p class="text-sm font-medium text-gray-800">Selamat datang, <%= user.name %>!</p>
+           <p class="text-xs text-gray-500">Role: <%= user.role %></p>
+        </div>
+        <!-- 2.b Tombol signout -->
+        <a href="/logout" id="logout-button" class="flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-100 rounded-lg hover:bg-red-200">
+            <i data-lucide="log-out" class="w-4 h-4 mr-2"></i>
+            Sign Out
+        </a>
+    </div>
+</header>

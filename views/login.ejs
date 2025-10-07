@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - UTS Project</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex items-center justify-center min-h-screen">
+        <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-lg">
+            <div class="text-center">
+                <img src="https://placehold.co/150x50/1d4ed8/ffffff?text=LogoBelajar" alt="Logo" class="mx-auto mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">Selamat Datang Kembali</h2>
+                <p class="text-gray-500">Silakan masuk untuk melanjutkan</p>
+            </div>
+            
+            <form action="/login" method="POST" class="space-y-6">
+                <div>
+                    <label for="username" class="text-sm font-medium text-gray-700">Username</label>
+                    <input id="username" name="username" type="text" required class="w-full px-4 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="cth: admin">
+                </div>
+                <div>
+                    <label for="password" class="text-sm font-medium text-gray-700">Password</label>
+                    <input id="password" name="password" type="password" required class="w-full px-4 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="cth: admin123">
+                </div>
+                
+                <% if (error) { %>
+                    <div class="p-3 text-sm text-red-700 bg-red-100 rounded-lg">
+                        <%= error %>
+                    </div>
+                <% } %>
+                
+                <button type="submit" class="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-300">
+                    Masuk
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
