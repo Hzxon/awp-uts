@@ -25,6 +25,23 @@ app.use(session({
     cookie: { secure: false }
 }));
 
+// --- SIMULASI GEMINI GEMS ---
+// Kumpulan persona/prompt yang bisa dipilih oleh pengguna
+const geminiGems = {
+    'tutor-cerdas': {
+        name: 'Tutor Cerdas',
+        prompt: `Anda adalah seorang tutor AI yang ramah dan cerdas. Jawab pertanyaan pengguna dalam Bahasa Indonesia. Jika pertanyaan tersebut bisa dijawab menggunakan "Teks Sumber" yang diberikan, prioritaskan untuk menjawab berdasarkan teks tersebut. Jika tidak, jawablah pertanyaan tersebut berdasarkan pengetahuan umum Anda.`
+    },
+    'pakar-sejarah': {
+        name: 'Pakar Sejarah',
+        prompt: `Anda adalah seorang sejarawan yang sangat ahli. Analisis pertanyaan pengguna dari sudut pandang historis. Berikan jawaban yang mendalam dan detail. Selalu prioritaskan informasi dari "Teks Sumber" jika relevan. Jika tidak, gunakan pengetahuan sejarah Anda yang luas. Gunakan gaya bahasa yang formal dan informatif.`
+    },
+    'asisten-kreatif': {
+        name: 'Asisten Kreatif',
+        prompt: `Anda adalah asisten AI yang imajinatif dan kreatif. Jawab pertanyaan pengguna dengan cara yang unik dan menarik. Jika "Teks Sumber" ada, gunakan sebagai titik awal untuk eksplorasi kreatif, misalnya dengan membuat cerita pendek, puisi, atau ide-ide brainstorming yang berhubungan dengan teks tersebut. Jangan takut untuk berpikir di luar kotak.`
+    }
+};
+
 // --- SIMULASI DATABASE ---
 let users = { 'admin': { password: 'admin123', name: 'Admin Utama', role: 'admin' }, 'siswa': { password: 'siswa123', name: 'Siswa Rajin', role: 'student' }};
 let students = [
@@ -51,17 +68,21 @@ app.post('/login', (req, res) => {
 app.get('/logout', (req, res) => req.session.destroy(() => res.redirect('/login')));
 app.get('/', checkAuth, (req, res) => res.redirect('/dashboard'));
 app.get('/dashboard', checkAuth, (req, res) => res.render('pages/dashboard', { user: req.session.user }));
-app.get('/belajar-ai', checkAuth, (req, res) => res.render('pages/belajar-ai', { user: req.session.user }));
+
+// Mengirim data 'gems' ke halaman belajar-ai
+app.get('/belajar-ai', checkAuth, (req, res) => {
+    res.render('pages/belajar-ai', { user: req.session.user, gems: geminiGems });
+});
 
 // API endpoint untuk berinteraksi dengan Gemini
 app.post('/api/ask-ai', checkAuth, async (req, res) => {
-    const { sourceText, question } = req.body;
+    const { sourceText, question, gem } = req.body; // Menerima 'gem' dari frontend
     if (!question || !sourceText) return res.status(400).json({ error: 'Pertanyaan dan sumber teks tidak boleh kosong.' });
 
     try {
-        // ===== PERUBAHAN DI SINI =====
-        // Instruksi baru yang lebih fleksibel untuk AI
-        const systemPrompt = `Anda adalah seorang tutor AI yang ramah dan cerdas. Jawab pertanyaan pengguna dalam Bahasa Indonesia. Jika pertanyaan tersebut bisa dijawab menggunakan "Teks Sumber" yang diberikan, prioritaskan untuk menjawab berdasarkan teks tersebut. Jika tidak, jawablah pertanyaan tersebut berdasarkan pengetahuan umum Anda.`;
+        // Memilih prompt berdasarkan 'gem' yang dipilih, atau gunakan default 'tutor-cerdas'
+        const selectedGem = geminiGems[gem] || geminiGems['tutor-cerdas'];
+        const systemPrompt = selectedGem.prompt;
         
         const userQuery = `Teks Sumber:\n---\n${sourceText}\n---\nPertanyaan: ${question}`;
         
