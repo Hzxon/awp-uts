@@ -1,0 +1,21 @@
+<!doctype html><html><body>
+  <h1>Master Siswa</h1>
+  <a href="/students/new">+ Tambah Siswa</a>
+  <table border="1" cellpadding="6">
+    <tr><th>ID</th><th>Nama</th><th>Kelas</th><th>Email</th><th>Aksi</th></tr>
+    <% students.forEach(s => { %>
+      <tr>
+        <td><%= s.id %></td>
+        <td><%= s.name %></td>
+        <td><%= s.class %></td>
+        <td><%= s.email %></td>
+        <td>
+          <a href="/students/<%= s.id %>/edit">Edit</a>
+          <form action="/students/<%= s.id %>/delete" method="post" style="display:inline">
+            <button type="submit" onclick="return confirm('Hapus?')">Hapus</button>
+          </form>
+        </td>
+      </tr>
+    <% }) %>
+  </table>
+</body></html>

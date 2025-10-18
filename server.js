@@ -53,11 +53,17 @@ let students = [
 let nextStudentId = 104;
 
 // Middleware
-const checkAuth = (req, res, next) => req.session.user ? next() : res.redirect('/login');
-const checkAdmin = (req, res, next) => (req.session.user && req.session.user.role === 'admin') ? next() : res.status(403).send("Akses ditolak.");
+const checkAuth = (req, res, next) =>
+  req.session.user ? next() : res.redirect('/login');
+
+const checkAdmin = (req, res, next) =>
+  (req.session.user && req.session.user.username === 'admin')
+    ? next()
+    : res.status(403).send('Akses ditolak.');
 
 // --- ROUTING ---
 app.get('/login', (req, res) => res.render('pages/login', { error: null }));
+
 app.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -68,7 +74,7 @@ app.post('/login', async (req, res) => {
 
     const pool = await getPool();
     const [rows] = await pool.query(
-      'SELECT username, password FROM users WHERE username = ? LIMIT 1',
+      'SELECT username, password, role FROM users WHERE username = ? LIMIT 1',
       [username]
     );
 
@@ -76,18 +82,14 @@ app.post('/login', async (req, res) => {
       return res.render('pages/login', { error: 'Username tidak ditemukan' });
     }
 
-    // ambil user pertama
     const user = rows[0];
 
-    // bandingkan password plain
     if (user.password !== password) {
       return res.render('pages/login', { error: 'Password salah' });
     }
 
-    // simpan sesi login
-    req.session.user = { username: user.username };
+    req.session.user = { username: user.username, role: user.role };
 
-    // redirect ke dashboard atau halaman utama
     return res.redirect('/');
   } catch (err) {
     console.error(err);
@@ -96,7 +98,12 @@ app.post('/login', async (req, res) => {
 });
 
 app.get('/logout', (req, res) => req.session.destroy(() => res.redirect('/login')));
-app.get('/', checkAuth, (req, res) => res.redirect('/dashboard'));
+
+app.get('/', checkAuth, (req, res) => {
+  res.render('pages/dashboard', { user: req.session.user });
+});
+
+
 app.get('/dashboard', checkAuth, (req, res) => res.render('pages/dashboard', { user: req.session.user }));
 
 // Mengirim data 'gems' ke halaman belajar-ai
@@ -105,10 +112,78 @@ app.get('/belajar-ai', checkAuth, (req, res) => {
 });
 
 // lihat daftar siswa
-app.get('/students', /* checkAuth, */ async (req, res) => {
+app.get('/students', (req, res) => res.redirect('/master-siswa'));
+
+app.get('/master-siswa', checkAuth, async (req, res) => {
   const pool = await getPool();
-  const [rows] = await pool.query('SELECT id, name, `class`, email FROM ms_student ORDER BY id DESC');
-  res.render('pages/students', { user: req.session.user, students: rows });
+  const [rows] = await pool.query(
+    'SELECT id, name, `class`, email FROM ms_student ORDER BY id DESC'
+  );
+  res.render('pages/master-siswa', { user: req.session.user, students: rows });
+});
+
+
+// TAMBAH siswa → simpan ke DB
+app.post('/master-siswa/add', checkAuth, async (req, res) => {
+  const { name, class: cls, email } = req.body;
+
+  if (!name || !cls || !email) {
+    return res.status(400).send('Semua field wajib diisi');
+  }
+
+  const pool = await getPool();
+  await pool.query(
+    'INSERT INTO ms_student (name, `class`, email) VALUES (?, ?, ?)',
+    [name, cls, email]
+  );
+
+  res.redirect('/master-siswa');
+});
+
+// EDIT siswa → update ke DB
+app.post('/master-siswa/edit/:id', checkAuth, async (req, res) => {
+  const { id } = req.params;
+  const { name, class: cls, email } = req.body;
+
+  if (!name || !cls || !email) {
+    return res.status(400).send('Semua field wajib diisi');
+  }
+
+  const pool = await getPool();
+  await pool.query(
+    'UPDATE ms_student SET name = ?, `class` = ?, email = ? WHERE id = ?',
+    [name, cls, email, id]
+  );
+
+  res.redirect('/master-siswa');
+});
+
+// HAPUS siswa → delete di DB
+app.post('/master-siswa/delete/:id', checkAuth, async (req, res) => {
+  const { id } = req.params;
+
+  const pool = await getPool();
+  await pool.query('DELETE FROM ms_student WHERE id = ?', [id]);
+
+  res.redirect('/master-siswa');
+});
+
+// LAPORAN NILAI (list + search) — dari DB
+app.get('/laporan-nilai', checkAuth, async (req, res) => {
+  const { keyword = '' } = req.query;
+  const like = `%${keyword}%`;
+
+  const pool = await getPool();
+  const [rows] = await pool.query(
+    'SELECT id, name, `class`, email FROM ms_student WHERE name LIKE ? OR `class` LIKE ? OR email LIKE ? ORDER BY name ASC',
+    [like, like, like]
+  );
+
+  res.render('pages/laporan-nilai', {
+    user: req.session.user,
+    students: rows,
+    keyword
+  });
 });
 
 
@@ -157,7 +232,12 @@ app.post('/api/ask-ai', checkAuth, async (req, res) => {
 });
 
 // Rute Modul Lainnya (tidak berubah)
-app.get('/master-siswa', checkAuth, checkAdmin, (req, res) => res.render('pages/master-siswa', { user: req.session.user, students: students }));
+app.get('/master-siswa', checkAuth, async (req, res) => {
+  const pool = await getPool();
+  const [rows] = await pool.query('SELECT id, name, `class`, email FROM ms_student ORDER BY id DESC');
+  res.render('pages/master-siswa', { user: req.session.user, students: rows });
+});
+
 app.post('/master-siswa/add', checkAuth, checkAdmin, (req, res) => {
     const { name, class: studentClass, email } = req.body;
     if(name && studentClass && email) students.push({ id: nextStudentId++, name, class: studentClass, email });
