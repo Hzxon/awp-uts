@@ -104,6 +104,14 @@ app.get('/belajar-ai', checkAuth, (req, res) => {
     res.render('pages/belajar-ai', { user: req.session.user, gems: geminiGems });
 });
 
+// lihat daftar siswa
+app.get('/students', /* checkAuth, */ async (req, res) => {
+  const pool = await getPool();
+  const [rows] = await pool.query('SELECT id, name, `class`, email FROM ms_student ORDER BY id DESC');
+  res.render('pages/students', { user: req.session.user, students: rows });
+});
+
+
 // API endpoint untuk berinteraksi dengan Gemini
 app.post('/api/ask-ai', checkAuth, async (req, res) => {
     const { sourceText, question, gem } = req.body; // Menerima 'gem' dari frontend
