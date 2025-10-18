@@ -9,6 +9,7 @@ const path = require('path');
 
 // Inisialisasi aplikasi Express
 const app = express();
+const { getPool } = require('./db');
 const port = 3000;
 
 // Konfigurasi middleware
@@ -57,14 +58,43 @@ const checkAdmin = (req, res, next) => (req.session.user && req.session.user.rol
 
 // --- ROUTING ---
 app.get('/login', (req, res) => res.render('pages/login', { error: null }));
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
+  try {
     const { username, password } = req.body;
-    if (!username || !password) return res.render('pages/login', { error: 'Username dan password harus diisi.' });
-    const user = users[username];
-    if (!user || user.password !== password) return res.render('pages/login', { error: 'Username atau password salah.' });
-    req.session.user = { username, name: user.name, role: user.role };
-    res.redirect('/dashboard');
+
+    if (!username || !password) {
+      return res.render('pages/login', { error: 'Username dan password wajib diisi' });
+    }
+
+    const pool = await getPool();
+    const [rows] = await pool.query(
+      'SELECT username, password FROM users WHERE username = ? LIMIT 1',
+      [username]
+    );
+
+    if (!rows.length) {
+      return res.render('pages/login', { error: 'Username tidak ditemukan' });
+    }
+
+    // ambil user pertama
+    const user = rows[0];
+
+    // bandingkan password plain
+    if (user.password !== password) {
+      return res.render('pages/login', { error: 'Password salah' });
+    }
+
+    // simpan sesi login
+    req.session.user = { username: user.username };
+
+    // redirect ke dashboard atau halaman utama
+    return res.redirect('/');
+  } catch (err) {
+    console.error(err);
+    return res.status(500).render('pages/login', { error: 'Terjadi kesalahan server' });
+  }
 });
+
 app.get('/logout', (req, res) => req.session.destroy(() => res.redirect('/login')));
 app.get('/', checkAuth, (req, res) => res.redirect('/dashboard'));
 app.get('/dashboard', checkAuth, (req, res) => res.render('pages/dashboard', { user: req.session.user }));
@@ -146,6 +176,17 @@ app.get('/laporan-nilai', checkAuth, (req, res) => {
         filteredStudents = students.filter(s => s.name.toLowerCase().includes(keyword) || s.class.toLowerCase().includes(keyword));
     }
     res.render('pages/laporan-nilai', { user: req.session.user, students: filteredStudents, keyword: keyword || '' });
+});
+
+app.get('/debug/db', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const [r] = await pool.query('SELECT 1 AS ok');
+    res.json({ ok: true, result: r });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, error: String(e) });
+  }
 });
 
 // Menjalankan server
