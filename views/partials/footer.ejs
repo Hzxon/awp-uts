@@ -1,4 +1,45 @@
 <script>
+    // --- LOGIKA SIDEBAR RESPONSIVE UNIVERSAL ---
+    const sidebar = document.getElementById('sidebar');
+    const toggleButton = document.getElementById('sidebar-toggle-btn');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    function toggleSidebar() {
+        if (!sidebar) return;
+        
+        // Mengubah posisi sidebar
+        sidebar.classList.toggle('-translate-x-full');
+        
+        // Mengubah tampilan overlay
+        overlay.classList.toggle('opacity-0');
+        overlay.classList.toggle('opacity-50');
+        overlay.classList.toggle('pointer-events-none');
+    }
+
+    // 1. Sambungkan tombol ke fungsi toggle
+    if (toggleButton) {
+        toggleButton.addEventListener('click', toggleSidebar);
+    }
+    
+    // 2. Sambungkan overlay (untuk menutup saat klik di luar sidebar)
+    if (overlay) {
+        overlay.addEventListener('click', toggleSidebar);
+    }
+    
+    // 3. Handler resize window (memastikan sidebar terlihat di desktop)
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 768) { // md breakpoint
+             if (sidebar) {
+                 // Memastikan sidebar terlihat di desktop
+                 sidebar.classList.remove('-translate-x-full'); 
+                 // Memastikan overlay tidak ada di desktop
+                 overlay.classList.add('opacity-0', 'pointer-events-none');
+                 overlay.classList.remove('opacity-50');
+             }
+        }
+    });
+
+    // Panggil fungsi Lucide untuk menampilkan ikon
     lucide.createIcons();
 </script>
 </body>

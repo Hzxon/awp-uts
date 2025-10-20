@@ -8,15 +8,42 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
+        body { font-family: 'Inter', sans-serif;
+ background-color: #f0f4f8; }
+        /* Warna Sidebar yang Telah Disesuaikan (Navy Blue) */
+        .bg-navy { background-color: #0A1929; } /* Warna Navy Custom */
+        .border-navy-dark { border-color: #05101a; }
+        .text-blue-200-subtle { color: #bfdbfe; }
+        .bg-blue-800-active { background-color: #1e40af; } /* Untuk link aktif */
+
+        /* Styling Link Sidebar */
         .sidebar-link { transition: all 0.2s ease-in-out; }
-        .sidebar-link:hover, .sidebar-link.active { background-color: #1e40af; color: white; transform: translateX(5px); }
+        .sidebar-link:hover, .sidebar-link.active { 
+            background-color: #1e40af; color: white; transform: translateX(5px);
+        }
+        
+        /* Modal Backdrop */
         .modal-backdrop { background-color: rgba(0,0,0,0.5); }
+
+        /* CSS untuk Loading Indicator */
+        .dot-flashing { position: relative; width: 10px; height: 10px; border-radius: 5px; background-color: #9880ff; color: #9880ff; animation: dot-flashing 1s infinite linear alternate; animation-delay: .5s; }
+        .dot-flashing::before, .dot-flashing::after { content: ''; display: inline-block; position: absolute; top: 0; }
+        .dot-flashing::before { left: -15px; width: 10px; height: 10px; border-radius: 5px; background-color: #9880ff; color: #9880ff; animation: dot-flashing 1s infinite alternate; animation-delay: 0s; }
+        .dot-flashing::after { left: 15px; width: 10px; height: 10px; border-radius: 5px; background-color: #9880ff; color: #9880ff; animation: dot-flashing 1s infinite alternate; animation-delay: 1s; }
+        @keyframes dot-flashing { 0% { background-color: #5C6BC0; } 50%, 100% { background-color: #CFD8DC; } }
+        
+        /* CSS Khusus Print Laporan Nilai */
         @media print {
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
             #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+            /* Sembunyikan tombol saat print */
+            .no-print { display: none !important; }
+            /* Memastikan sidebar tidak tampil saat cetak */
+            .sidebar { display: none !important; }
+            /* Menghilangkan margin kiri pada topbar saat cetak */
+            .topbar { margin-left: 0 !important; }
         }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 antialiased">
