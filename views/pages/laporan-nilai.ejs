@@ -34,6 +34,7 @@
                     <table class="w-full text-sm text-left text-gray-500">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
+                                <th scope="col" class="px-6 py-3">No</th>
                                 <th scope="col" class="px-6 py-3">Nama Siswa</th>
                                 <th scope="col" class="px-6 py-3">Kelas</th>
                                 <th scope="col" class="px-6 py-3">Mata Pelajaran</th>
@@ -42,10 +43,11 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <% students.forEach(student => { 
+                            <% students.forEach((student, index) => { 
                                 const nilai = Math.floor(Math.random() * 41) + 60; // Simulasi nilai 60-100
                             %>
                             <tr class="bg-white border-b">
+                                <td class="px-6 py-4"><%= index + 1 %></td>
                                 <td class="px-6 py-4 font-medium text-gray-900"><%= student.name %></td>
                                 <td class="px-6 py-4"><%= student.class %></td>
                                 <td class="px-6 py-4">Matematika</td>
@@ -61,7 +63,7 @@
                             <% }) %>
                              <% if (students.length === 0) { %>
                                 <tr>
-                                    <td colspan="5" class="text-center py-10 text-gray-500">Data tidak ditemukan.</td>
+                                    <td colspan="6" class="text-center py-10 text-gray-500">Data tidak ditemukan.</td>
                                 </tr>
                             <% } %>
                         </tbody>
