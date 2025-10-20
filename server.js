@@ -19,6 +19,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.set('trust proxy', 1);
 
+//Import Assets
+app.use('/asset', express.static('asset'));
+
 // Konfigurasi session
 app.use(session({
   secret: process.env.SESSION_SECRET || 'kunci-rahasia-uts-project',
