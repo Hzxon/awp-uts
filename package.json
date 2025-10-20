@@ -11,8 +11,7 @@
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
-    "express-session": "^1.18.2",
-    "nanoid": "^5.0.7"
+    "express-session": "^1.18.2"
   },
   "engines": {
     "node": ">=18"

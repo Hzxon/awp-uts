@@ -3,7 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
-const { nanoid } = require('nanoid');
+const { randomUUID } = require('crypto');
 
 const api = require('./routes');
 const { getCollection, writeDB } = require('./db');
@@ -156,7 +156,7 @@ app.post('/master-siswa/add', requireAuth, asyncHandler(async (req, res) => {
 
   const now = new Date().toISOString();
   collection.push({
-    id: nanoid(),
+    id: randomUUID(),
     name,
     class: cls,
     email,

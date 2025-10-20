@@ -1,5 +1,5 @@
 const express = require('express');
-const { nanoid } = require('nanoid');
+const { randomUUID } = require('crypto');
 const { getCollection, writeDB } = require('../db');
 
 const router = express.Router();
@@ -47,7 +47,7 @@ router.post('/:collection', async (req, res, next) => {
     const { db, collection } = await getCollection(name);
     const now = new Date().toISOString();
     const newItem = {
-      id: nanoid(),
+      id: randomUUID(),
       ...req.body,
       createdAt: req.body.createdAt || now,
       updatedAt: req.body.updatedAt || now,
