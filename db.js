@@ -1,43 +1,45 @@
-// db.js — koneksi mysql2/promise (mendukung lokal & serverless)
-const mysql = require('mysql2/promise');
-const fs = require('fs');
+const fs = require('fs/promises');
+const path = require('path');
 
-let cachedPool = global._mysqlPool;
+// Default lokal: tulis ke db.json di root project.
+// Di Railway: set env DB_PATH ke `/app/data/db.json`
+const DEFAULT_DB = path.join(__dirname, 'db.json');
+const DB_PATH = process.env.DB_PATH || DEFAULT_DB;
 
-async function getPool() {
-  if (cachedPool) return cachedPool;
-
-  const { DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME, DB_SSL, DB_CA, DB_CA_FILE } = process.env;
-  if (!DB_HOST || !DB_USER || !DB_NAME) {
-    throw new Error('Missing DB env vars (DB_HOST, DB_USER, DB_PASS, DB_NAME).');
+async function readDB() {
+  try {
+    const txt = await fs.readFile(DB_PATH, 'utf8');
+    return JSON.parse(txt || '{}');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      await ensureDirFor(DB_PATH);
+      await writeDB({});
+      return {};
+    }
+    throw err;
   }
-
-  // Pilih sumber sertifikat TLS:
-  let ssl;
-  if (DB_SSL === 'false' || DB_SSL === '0') {
-    ssl = undefined; // (TiDB Cloud biasanya butuh TLS, jadi ini jarang dipakai)
-  } else if (DB_CA && DB_CA.trim().length > 0) {
-    ssl = { ca: DB_CA }; // untuk hosting (Vercel), simpan isi CA di env
-  } else if (DB_CA_FILE && fs.existsSync(DB_CA_FILE)) {
-    ssl = { ca: fs.readFileSync(DB_CA_FILE, 'utf8') }; // untuk lokal: pakai path file .pem
-  } else {
-    ssl = { rejectUnauthorized: true }; // fallback
-  }
-
-  cachedPool = await mysql.createPool({
-    host: DB_HOST,
-    port: DB_PORT ? Number(DB_PORT) : 4000,
-    user: DB_USER,
-    password: DB_PASS,
-    database: DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    ssl
-  });
-
-  global._mysqlPool = cachedPool;
-  return cachedPool;
 }
 
-module.exports = { getPool };
+async function ensureDirFor(filePath) {
+  const dir = path.dirname(filePath);
+  try {
+    await fs.mkdir(dir, { recursive: true });
+  } catch (e) {
+    if (e.code !== 'EEXIST') throw e;
+  }
+}
+
+async function writeDB(obj) {
+  const tmpPath = DB_PATH + '.tmp';
+  await ensureDirFor(DB_PATH);
+  await fs.writeFile(tmpPath, JSON.stringify(obj, null, 2), 'utf8');
+  await fs.rename(tmpPath, DB_PATH);
+}
+
+async function getCollection(name) {
+  const db = await readDB();
+  if (!db[name]) db[name] = [];
+  return { db, collection: db[name] };
+}
+
+module.exports = { readDB, writeDB, getCollection, DB_PATH };
