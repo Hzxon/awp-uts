@@ -17,13 +17,19 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.set('trust proxy', 1);
 
 // Konfigurasi session
 app.use(session({
-    secret: 'kunci-rahasia-uts-project',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false }
+  secret: process.env.SESSION_SECRET || 'kunci-rahasia-uts-project',
+  resave: false,
+  saveUninitialized: false,          
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // true di Vercel (HTTPS)
+    sameSite: 'lax',                // aman untuk form normal
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 hari
+  }
 }));
 
 // --- SIMULASI GEMINI GEMS ---
@@ -82,7 +88,7 @@ app.post('/login', async (req, res) => {
 
     req.session.user = { username: user.username, role: user.role };
 
-    return res.redirect('/');
+    return res.redirect('/dashboard');
   } catch (err) {
     console.error(err);
     return res.status(500).render('pages/login', { error: 'Terjadi kesalahan server' });
@@ -91,12 +97,13 @@ app.post('/login', async (req, res) => {
 
 app.get('/logout', (req, res) => req.session.destroy(() => res.redirect('/login')));
 
-app.get('/', checkAuth, (req, res) => {
+// Default root: arahkan ke login
+app.get('/', (req, res) => res.redirect('/login'));
+
+// Dashboard tetap protected
+app.get('/dashboard', checkAuth, (req, res) => {
   res.render('pages/dashboard', { user: req.session.user });
 });
-
-
-app.get('/dashboard', checkAuth, (req, res) => res.render('pages/dashboard', { user: req.session.user }));
 
 // Mengirim data 'gems' ke halaman belajar-ai
 app.get('/belajar-ai', checkAuth, (req, res) => {
