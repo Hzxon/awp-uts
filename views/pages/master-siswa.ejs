@@ -3,7 +3,6 @@
 <div class="flex h-screen bg-gray-100">
     <%- include('../partials/sidebar', {user: user, active: 'master-siswa'}) %>
     
-    <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
         <%- include('../partials/topbar', {user: user, pageTitle: 'Master Siswa'}) %>
 
@@ -15,12 +14,11 @@
                         <i data-lucide="plus" class="w-4 h-4 mr-2"></i> Tambah Siswa
                     </button>
                 </div>
-                <!-- Tabel Data Siswa -->
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left text-gray-500">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3">ID</th>
+                                <th scope="col" class="px-6 py-3">No</th> 
                                 <th scope="col" class="px-6 py-3">Nama Lengkap</th>
                                 <th scope="col" class="px-6 py-3">Kelas</th>
                                 <th scope="col" class="px-6 py-3">Email</th>
@@ -28,9 +26,10 @@
                             </tr>
                         </thead>
                         <tbody>
+                            <% let counter = 1; %>
                             <% students.forEach(student => { %>
                             <tr class="bg-white border-b">
-                                <td class="px-6 py-4"><%= student.id %></td>
+                                <td class="px-6 py-4"><%= counter++ %></td> 
                                 <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= student.name %></th>
                                 <td class="px-6 py-4"><%= student.class %></td>
                                 <td class="px-6 py-4"><%= student.email %></td>
@@ -48,8 +47,6 @@
     </div>
 </div>
 
-<!-- Modals -->
-<!-- Modal Tambah -->
 <div id="add-student-modal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center hidden">
     <div class="bg-white w-full max-w-lg p-6 rounded-xl shadow-2xl">
         <h3 class="text-lg font-semibold">Tambah Siswa Baru</h3>
@@ -74,7 +71,6 @@
     </div>
 </div>
 
-<!-- Modal Edit -->
 <div id="edit-student-modal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center hidden">
     <div class="bg-white w-full max-w-lg p-6 rounded-xl shadow-2xl">
         <h3 class="text-lg font-semibold">Edit Data Siswa</h3>
@@ -100,7 +96,6 @@
     </div>
 </div>
 
-<!-- Modal Delete -->
 <div id="delete-confirmation-modal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center hidden">
     <div class="bg-white w-full max-w-md p-6 rounded-xl shadow-2xl text-center">
         <i data-lucide="alert-triangle" class="h-12 w-12 text-red-500 mx-auto"></i>
