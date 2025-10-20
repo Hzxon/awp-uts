@@ -14,6 +14,8 @@ const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || '*';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'awp-uts-session-secret';
 const STUDENT_COLLECTION = 'students';
 
+app.set('trust proxy', 1);
+
 const GEM_PERSONAS = {
   'tutor-cerdas': {
     name: 'Tutor Cerdas',
@@ -300,4 +302,8 @@ app.use((err, req, res, _next) => {
 
 app.listen(PORT, () => {
   console.log(`✅ Server listening on http://localhost:${PORT}`);
+});
+
+app.get('/debug/env', (req, res) => {
+  res.json({ port_env: process.env.PORT, db_path: process.env.DB_PATH });
 });
