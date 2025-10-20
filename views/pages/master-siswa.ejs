@@ -20,7 +20,6 @@
                     <table class="w-full text-sm text-left text-gray-500">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3">ID</th>
                                 <th scope="col" class="px-6 py-3">Nama Lengkap</th>
                                 <th scope="col" class="px-6 py-3">Kelas</th>
                                 <th scope="col" class="px-6 py-3">Email</th>
@@ -30,13 +29,27 @@
                         <tbody>
                             <% students.forEach(student => { %>
                             <tr class="bg-white border-b">
-                                <td class="px-6 py-4"><%= student.id %></td>
                                 <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= student.name %></th>
                                 <td class="px-6 py-4"><%= student.class %></td>
                                 <td class="px-6 py-4"><%= student.email %></td>
                                 <td class="px-6 py-4 text-center space-x-2">
-                                    <button onclick="openEditModal('<%= JSON.stringify(student) %>')" class="text-blue-600 hover:text-blue-800"><i data-lucide="edit"></i></button>
-                                    <button onclick="openDeleteModal('<%= student.id %>')" class="text-red-600 hover:text-red-800"><i data-lucide="trash-2"></i></button>
+                                    <button
+                                    class="text-blue-600 hover:text-blue-800"
+                                    data-name="<%= student.name %>"
+                                    data-class="<%= student.class %>"
+                                    data-email="<%= student.email %>"
+                                    onclick="openEdit(this)"
+                                    >
+                                    <i data-lucide="edit"></i>
+                                    </button>
+
+<button
+  onclick="openDeleteModal('<%= encodeURIComponent(student.name) %>')"
+  class="text-red-600 hover:text-red-800"
+>
+  <i data-lucide="trash-2"></i>
+</button>
+
                                 </td>
                             </tr>
                             <% }) %>
@@ -79,7 +92,6 @@
     <div class="bg-white w-full max-w-lg p-6 rounded-xl shadow-2xl">
         <h3 class="text-lg font-semibold">Edit Data Siswa</h3>
         <form id="edit-form" action="" method="POST" class="mt-4 space-y-4">
-            <input type="hidden" name="id" id="edit-student-id">
             <div>
                 <label class="block text-sm">Nama Lengkap</label>
                 <input type="text" name="name" id="edit-student-name" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" required>
@@ -114,23 +126,28 @@
 </div>
 
 <script>
-    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+  function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
+  function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-    function openEditModal(studentData) {
-        const student = JSON.parse(studentData);
-        document.getElementById('edit-form').action = '/master-siswa/edit/' + student.id;
-        document.getElementById('edit-student-id').value = student.id;
-        document.getElementById('edit-student-name').value = student.name;
-        document.getElementById('edit-student-class').value = student.class;
-        document.getElementById('edit-student-email').value = student.email;
-        openModal('edit-student-modal');
-    }
+  function openEdit(el) {
+    const name  = el.dataset.name;
+    const cls   = el.dataset.class;
+    const email = el.dataset.email;
 
-    function openDeleteModal(id) {
-        document.getElementById('delete-form').action = '/master-siswa/delete/' + id;
-        openModal('delete-confirmation-modal');
-    }
+    document.getElementById('edit-form').action =
+      '/master-siswa/edit/' + encodeURIComponent(name);
+
+    document.getElementById('edit-student-name').value  = name;
+    document.getElementById('edit-student-class').value = cls;
+    document.getElementById('edit-student-email').value = email;
+
+    openModal('edit-student-modal');
+  }
+
+  function openDeleteModal(nameEncoded) {
+    document.getElementById('delete-form').action = '/master-siswa/delete/' + nameEncoded;
+    openModal('delete-confirmation-modal');
+  }
 </script>
 
 <%- include('../partials/footer') %>
