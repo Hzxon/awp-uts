@@ -1,12 +1,14 @@
+require('dotenv').config({ path: '.env.local' });
 require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const { randomUUID } = require('crypto');
-
+const { pool } = require('./db');
 const api = require('./routes');
 const { getCollection, writeDB } = require('./db');
+const { getAllStudents, addStudent, updateStudent, deleteStudent } = require('./studentModel');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -85,6 +87,31 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// DEBUG: coba insert 1 baris sangat unik supaya tidak bentrok PK
+app.get('/debug/insert-test', async (req, res) => {
+  const { pool } = require('./db');
+  const probe = `__probe_${Date.now()}`; // nama unik tiap klik
+
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO ms_student (`name`, `class`, `email`) VALUES (?, ?, ?)',
+      [probe, 'X-TEST', 'probe@example.com']
+    );
+    return res.json({ ok: true, inserted: { name: probe }, result });
+  } catch (e) {
+    // tampilkan info selengkap mungkin
+    return res.status(500).json({
+      ok: false,
+      code: e.code,
+      errno: e.errno,
+      sqlState: e.sqlState,
+      message: e.message,
+      sqlMessage: e.sqlMessage,
+      sql: e.sql
+    });
+  }
+});
+
 app.get('/', (req, res) => {
   if (req.session.user) return res.redirect('/dashboard');
   res.redirect('/login');
@@ -94,6 +121,55 @@ app.get('/login', (req, res) => {
   if (req.session.user) return res.redirect('/dashboard');
   res.render('pages/login', { error: null });
 });
+
+app.get('/db-check', async (req, res) => {
+  const diag = {};
+  try {
+    // 1) Cek variabel env ada/tidak (tanpa menampilkan isinya)
+    diag.env = {
+      hasHost: !!process.env.TIDB_HOST,
+      hasPort: !!process.env.TIDB_PORT,
+      hasUser: !!process.env.TIDB_USER,
+      hasPass: !!process.env.TIDB_PASSWORD,
+      hasDb:   !!process.env.TIDB_DATABASE,
+      caLen:   (process.env.TIDB_CA || '').length
+    };
+
+    // 2) Coba ping koneksi
+    const [[ping]] = await pool.query('SELECT 1 AS ok');
+    diag.ping = ping;
+
+    // 3) Hitung baris ms_student (boleh error kalau tabel belum ada, kita tangkap)
+    const [[countRow]] = await pool.query('SELECT COUNT(*) AS cnt FROM ms_student');
+    diag.count = countRow.cnt;
+
+    return res.status(200).send({ ok: true, diag });
+  } catch (err) {
+    diag.error = {
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+      errno: err?.errno,
+      fatal: err?.fatal,
+      sqlState: err?.sqlState,
+      stack: err?.stack?.split('\n').slice(0, 3)  // 3 baris pertama
+    };
+    return res.status(500).send({ ok: false, diag });
+  }
+});
+
+
+app.get('/env-check', (req, res) => {
+  res.send({
+    hasHost: !!process.env.TIDB_HOST,
+    hasPort: !!process.env.TIDB_PORT,
+    hasUser: !!process.env.TIDB_USER,
+    hasPass: !!process.env.TIDB_PASSWORD,
+    hasDb:   !!process.env.TIDB_DATABASE,
+    caLen:   (process.env.TIDB_CA || '').length
+  });
+});
+
 
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
@@ -132,96 +208,77 @@ app.get('/belajar-ai', requireAuth, (req, res) => {
 app.get('/students', requireAuth, (req, res) => res.redirect('/master-siswa'));
 
 app.get('/master-siswa', requireAuth, asyncHandler(async (req, res) => {
-  const { collection } = await getCollection(STUDENT_COLLECTION);
-  const sorted = [...collection].sort((a, b) => a.name.localeCompare(b.name));
+  const students = await getAllStudents(); // dari TiDB
   res.render('pages/master-siswa', {
     user: req.session.user,
-    students: sorted
+    students
   });
 }));
 
 app.post('/master-siswa/add', requireAuth, asyncHandler(async (req, res) => {
-  const name = (req.body.name || '').trim();
-  const cls = (req.body.class || '').trim();
+  const name  = (req.body.name  || '').trim();
+  const cls   = (req.body.class || '').trim();
   const email = (req.body.email || '').trim();
 
   if (!name || !cls || !email) {
     return res.status(400).send('Semua field wajib diisi.');
   }
 
-  const { db, collection } = await getCollection(STUDENT_COLLECTION);
-
-  const duplicate = collection.find((s) => s.name.toLowerCase() === name.toLowerCase());
-  if (duplicate) {
-    return res.status(409).send('Nama siswa sudah digunakan.');
+  try {
+    await addStudent(name, cls, email);
+    return res.redirect('/master-siswa');
+  } catch (e) {
+    if (e.code === 'DUPLICATE_NAME') {
+      return res.status(409).send('Nama siswa sudah digunakan.');
+    }
+    console.error(e);
+    return res.status(500).send('Gagal menambah data.');
   }
-
-  const now = new Date().toISOString();
-  collection.push({
-    id: randomUUID(),
-    name,
-    class: cls,
-    email,
-    createdAt: now,
-    updatedAt: now
-  });
-
-  await writeDB(db);
-  res.redirect('/master-siswa');
 }));
 
+
+
 app.post('/master-siswa/edit/:originalName', requireAuth, asyncHandler(async (req, res) => {
-  const originalName = req.params.originalName;
-  const name = (req.body.name || '').trim();
-  const cls = (req.body.class || '').trim();
+  const originalName = (req.params.originalName || '').trim();
+  const name  = (req.body.name  || '').trim();
+  const cls   = (req.body.class || '').trim();
   const email = (req.body.email || '').trim();
 
-  if (!name || !cls || !email) {
+  if (!originalName || !name || !cls || !email) {
     return res.status(400).send('Semua field wajib diisi.');
   }
 
-  const { db, collection } = await getCollection(STUDENT_COLLECTION);
-  const index = collection.findIndex((s) => s.name === originalName);
-
-  if (index === -1) {
-    return res.status(404).send('Data siswa tidak ditemukan.');
-  }
-
-  if (originalName !== name) {
-    const duplicate = collection.find(
-      (s, i) => i !== index && s.name.toLowerCase() === name.toLowerCase()
-    );
-    if (duplicate) {
+  try {
+    await updateStudent(originalName, name, cls, email);
+    return res.redirect('/master-siswa');
+  } catch (e) {
+    if (e.code === 'DUPLICATE_NAME') {
       return res.status(409).send('Nama baru sudah digunakan.');
     }
+    if (e.code === 'NOT_FOUND') {
+      return res.status(404).send('Data siswa tidak ditemukan.');
+    }
+    console.error('EDIT ERROR:', e);
+    return res.status(500).send(`Gagal mengubah data. (${e.code || 'NO_CODE'}: ${e.message || 'no message'})`);
   }
-
-  const current = collection[index];
-  collection[index] = {
-    ...current,
-    name,
-    class: cls,
-    email,
-    updatedAt: new Date().toISOString()
-  };
-
-  await writeDB(db);
-  res.redirect('/master-siswa');
 }));
 
 app.post('/master-siswa/delete/:name', requireAuth, asyncHandler(async (req, res) => {
-  const name = req.params.name;
-  const { db, collection } = await getCollection(STUDENT_COLLECTION);
-  const index = collection.findIndex((s) => s.name === name);
+  const name = (req.params.name || '').trim();
+  if (!name) return res.status(400).send('Nama tidak valid.');
 
-  if (index === -1) {
-    return res.status(404).send('Data siswa tidak ditemukan.');
+  try {
+    await deleteStudent(name);
+    return res.redirect('/master-siswa');
+  } catch (e) {
+    if (e.code === 'NOT_FOUND') {
+      return res.status(404).send('Data siswa tidak ditemukan.');
+    }
+    console.error('DELETE ERROR:', e);
+    return res.status(500).send(`Gagal menghapus data. (${e.code || 'NO_CODE'}: ${e.message || 'no message'})`);
   }
-
-  collection.splice(index, 1);
-  await writeDB(db);
-  res.redirect('/master-siswa');
 }));
+
 
 app.get('/laporan-nilai', requireAuth, asyncHandler(async (req, res) => {
   const keywordRaw = (req.query.keyword || '').trim();

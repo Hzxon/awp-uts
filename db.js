@@ -1,45 +1,32 @@
-const fs = require('fs/promises');
-const path = require('path');
+// db.js
+const fs = require('fs');
+const mysql = require('mysql2/promise');
 
-// Default lokal: tulis ke db.json di root project.
-// Di Railway: set env DB_PATH ke `/app/data/db.json`
-const DEFAULT_DB = path.join(__dirname, 'db.json');
-const DB_PATH = process.env.DB_PATH || DEFAULT_DB;
-
-async function readDB() {
-  try {
-    const txt = await fs.readFile(DB_PATH, 'utf8');
-    return JSON.parse(txt || '{}');
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      await ensureDirFor(DB_PATH);
-      await writeDB({});
-      return {};
-    }
-    throw err;
+function loadCA() {
+  // Prioritas: pakai file kalau disediakan
+  if (process.env.TIDB_CA_FILE && fs.existsSync(process.env.TIDB_CA_FILE)) {
+    return fs.readFileSync(process.env.TIDB_CA_FILE, 'utf8');
   }
-}
-
-async function ensureDirFor(filePath) {
-  const dir = path.dirname(filePath);
-  try {
-    await fs.mkdir(dir, { recursive: true });
-  } catch (e) {
-    if (e.code !== 'EEXIST') throw e;
+  // Fallback: TIDB_CA dengan \n yang di-escape
+  if (process.env.TIDB_CA) {
+    return process.env.TIDB_CA.replace(/\\n/g, '\n');
   }
+  return '';
 }
 
-async function writeDB(obj) {
-  const tmpPath = DB_PATH + '.tmp';
-  await ensureDirFor(DB_PATH);
-  await fs.writeFile(tmpPath, JSON.stringify(obj, null, 2), 'utf8');
-  await fs.rename(tmpPath, DB_PATH);
-}
+const pool = mysql.createPool({
+  host: process.env.TIDB_HOST,
+  port: Number(process.env.TIDB_PORT || 4000),
+  user: process.env.TIDB_USER,
+  password: process.env.TIDB_PASSWORD,
+  database: process.env.TIDB_DATABASE,
+  ssl: {
+    minVersion: 'TLSv1.2',
+    ca: loadCA(),
+    rejectUnauthorized: true
+  },
+  waitForConnections: true,
+  connectionLimit: 10
+});
 
-async function getCollection(name) {
-  const db = await readDB();
-  if (!db[name]) db[name] = [];
-  return { db, collection: db[name] };
-}
-
-module.exports = { readDB, writeDB, getCollection, DB_PATH };
+module.exports = { pool };
