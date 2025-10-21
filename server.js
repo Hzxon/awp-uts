@@ -13,6 +13,105 @@ const PORT = process.env.PORT || 3001;
 const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || '*';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'awp-uts-session-secret';
 const STUDENT_COLLECTION = 'students';
+const PASSING_GRADE_FALLBACK = 75;
+
+let LEARNING_MATERIALS = [
+  {
+    id: 'proklamasi',
+    title: 'Proklamasi Kemerdekaan Indonesia',
+    theme: 'Sejarah',
+    sourceText: [
+      'Proklamasi Kemerdekaan Indonesia dibacakan pada 17 Agustus 1945 oleh Soekarno dan Mohammad Hatta di kediaman Soekarno, Jalan Pegangsaan Timur No. 56, Jakarta.',
+      'Naskah proklamasi diketik oleh Sayuti Melik dan ditandatangani atas nama bangsa Indonesia.',
+      'Peristiwa ini menjadi titik awal lahirnya Republik Indonesia dan memicu perjuangan mempertahankan kemerdekaan.'
+    ].join(' '),
+    description: 'Mempelajari kronologi singkat dan makna proklamasi kemerdekaan.'
+  },
+  {
+    id: 'sumpah-pemuda',
+    title: 'Sumpah Pemuda 1928',
+    theme: 'Sejarah',
+    sourceText: [
+      'Sumpah Pemuda diikrarkan pada 28 Oktober 1928 dalam Kongres Pemuda II di Batavia.',
+      'Tiga bunyi sumpah menegaskan satu tanah air, satu bangsa, dan menjunjung tinggi bahasa persatuan yaitu Bahasa Indonesia.',
+      'Momentum ini menjadi tonggak persatuan gerakan nasional Indonesia sebelum kemerdekaan.'
+    ].join(' '),
+    description: 'Mengulas isi dan dampak Sumpah Pemuda bagi persatuan bangsa.'
+  },
+  {
+    id: 'ekosistem',
+    title: 'Ekosistem dan Rantai Makanan',
+    theme: 'IPA',
+    sourceText: [
+      'Ekosistem merupakan hubungan timbal balik antara makhluk hidup dengan lingkungannya.',
+      'Rantai makanan menggambarkan aliran energi dari produsen ke konsumen hingga pengurai.',
+      'Keseimbangan ekosistem dipengaruhi oleh kelimpahan tiap komponen dan interaksi antar makhluk hidup.'
+    ].join(' '),
+    description: 'Belajar konsep dasar ekosistem, rantai makanan, dan keseimbangan lingkungan.'
+  }
+];
+
+let CUSTOM_MATERIALS = [];
+
+function toFiniteNumber(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed.length) return null;
+    value = trimmed;
+  }
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function clampScore(value) {
+  const numeric = toFiniteNumber(value);
+  if (numeric === null) return null;
+  return Math.max(0, Math.min(100, Math.round(numeric)));
+}
+
+function getPassingGrade() {
+  const configured = toFiniteNumber(process.env.PASSING_GRADE);
+  if (configured === null) return PASSING_GRADE_FALLBACK;
+  return Math.max(0, Math.min(100, Math.round(configured)));
+}
+
+function computeSubjectStatus(score, explicitStatus, passingGrade) {
+  const normalizedStatus = (explicitStatus || '').trim();
+  if (normalizedStatus) return normalizedStatus;
+  if (score === null) return 'Belum dinilai';
+  return score >= passingGrade ? 'Lulus' : 'Remedial';
+}
+
+function normalizeSubjectEntry(subject, passingGrade, index = 0) {
+  if (!subject || typeof subject !== 'object') return null;
+  const name = (subject.name || '').trim() || '-';
+  const score = clampScore(subject.score);
+  const note = subject.note || subject.description || '';
+  const status = computeSubjectStatus(score, subject.status, passingGrade);
+  return { index, name, score, status, note };
+}
+
+function normalizeSubjectsList(subjects, passingGrade) {
+  if (!Array.isArray(subjects)) return [];
+  return subjects
+    .map((subject, index) => normalizeSubjectEntry(subject, passingGrade, index))
+    .filter(Boolean);
+}
+
+function ensureSubjectsArray(student) {
+  if (!Array.isArray(student.subjects)) {
+    student.subjects = [];
+  }
+  return student.subjects;
+}
+
+async function getStudentRecordByName(studentName) {
+  const { db, collection } = await getCollection(STUDENT_COLLECTION);
+  const index = collection.findIndex((item) => item.name === studentName);
+  const student = index === -1 ? null : collection[index];
+  return { db, collection, student, index };
+}
 
 app.set('trust proxy', 1);
 
@@ -118,18 +217,170 @@ app.get('/logout', (req, res) => {
   });
 });
 
-app.get('/dashboard', requireAuth, (req, res) => {
-  res.render('pages/dashboard', { user: req.session.user });
-});
+app.get('/dashboard', requireAuth, asyncHandler(async (req, res) => {
+  const { collection } = await getCollection(STUDENT_COLLECTION);
+  const totalStudents = collection.length;
+
+  const classSet = new Set(
+    collection
+      .map((student) => (student.class || '').trim())
+      .filter(Boolean)
+  );
+
+  const parseNumber = (value, fallback) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  const getTimestamp = (student) => {
+    const raw = student?.updatedAt || student?.createdAt;
+    const parsed = raw ? Date.parse(raw) : NaN;
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const formatter = new Intl.DateTimeFormat('id-ID', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+
+  const latestStudents = [...collection]
+    .sort((a, b) => getTimestamp(b) - getTimestamp(a))
+    .slice(0, 5)
+    .map((student) => {
+      const timestamp = getTimestamp(student);
+      return {
+        ...student,
+        displayUpdated: timestamp ? formatter.format(timestamp) : '-'
+      };
+    });
+
+  const parseOptionalNumber = (value) => {
+    const raw = value ?? '';
+    if (typeof raw !== 'string' && typeof raw !== 'number') return null;
+    const trimmed = String(raw).trim();
+    if (!trimmed.length) return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const stats = {
+    totalStudents,
+    totalClasses: classSet.size,
+    totalTeachers: parseOptionalNumber(process.env.TEACHER_COUNT),
+    totalSubjects: parseOptionalNumber(process.env.SUBJECT_COUNT)
+  };
+
+  res.render('pages/dashboard', {
+    user: req.session.user,
+    stats,
+    latestStudents
+  });
+}));
 
 app.get('/belajar-ai', requireAuth, (req, res) => {
+  const materials = [...LEARNING_MATERIALS, ...CUSTOM_MATERIALS];
   res.render('pages/belajar-ai', {
     user: req.session.user,
-    gems: GEM_PERSONAS
+    gems: GEM_PERSONAS,
+    materials,
+    successMessage: req.query.success || null,
+    selectedMaterialId: req.query.selected || null
+  });
+});
+
+app.get('/belajar-ai/materials/new', requireAuth, (req, res) => {
+  res.render('pages/belajar-ai-new-material', {
+    user: req.session.user,
+    error: req.query.error || null,
+    form: {
+      title: req.query.title || '',
+      theme: req.query.theme || '',
+      description: req.query.description || '',
+      sourceText: req.query.sourceText || ''
+    }
   });
 });
 
 app.get('/students', requireAuth, (req, res) => res.redirect('/master-siswa'));
+
+app.post('/belajar-ai/materials', requireAuth, asyncHandler(async (req, res) => {
+  const title = (req.body.title || '').trim();
+  const theme = (req.body.theme || '').trim();
+  const description = (req.body.description || '').trim();
+  const sourceText = (req.body.sourceText || '').trim();
+
+  if (!title || !sourceText) {
+    const params = new URLSearchParams({
+      error: 'Judul dan materi wajib diisi.',
+      title,
+      theme,
+      description,
+      sourceText
+    });
+    return res.redirect(`/belajar-ai/materials/new?${params.toString()}`);
+  }
+
+  const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const newMaterial = {
+    id,
+    title,
+    theme: theme || 'Umum',
+    description: description || 'Materi tambahan pengguna',
+    sourceText
+  };
+
+  CUSTOM_MATERIALS.push(newMaterial);
+
+  return res.redirect(`/belajar-ai?success=${encodeURIComponent('Materi berhasil ditambahkan.')}&selected=${encodeURIComponent(id)}`);
+}));
+
+app.get('/nilai-siswa', requireAuth, asyncHandler(async (req, res) => {
+  const { collection } = await getCollection(STUDENT_COLLECTION);
+  const passingGrade = getPassingGrade();
+
+  const summaries = collection
+    .map((student) => {
+      const subjects = normalizeSubjectsList(student.subjects, passingGrade);
+      const totalSubjects = subjects.length;
+      const scoreValues = subjects
+        .map((s) => s.score)
+        .filter((score) => score !== null && score !== undefined);
+
+      const averageScore = scoreValues.length
+        ? Math.round(scoreValues.reduce((sum, value) => sum + value, 0) / scoreValues.length)
+        : null;
+
+      const passedCount = subjects.filter((s) => s.status.toLowerCase() === 'lulus').length;
+      const remedialCount = subjects.filter((s) => s.status.toLowerCase() === 'remedial').length;
+
+      const latestUpdate = [student.updatedAt, student.createdAt]
+        .map((value) => (value ? Date.parse(value) : NaN))
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => b - a)[0] || null;
+
+      return {
+        student,
+        subjects,
+        totalSubjects,
+        averageScore,
+        passedCount,
+        remedialCount,
+        latestUpdate
+      };
+    })
+    .sort((a, b) => {
+      if (b.latestUpdate && a.latestUpdate) return b.latestUpdate - a.latestUpdate;
+      if (b.latestUpdate) return 1;
+      if (a.latestUpdate) return -1;
+      return a.student.name.localeCompare(b.student.name, 'id', { sensitivity: 'base' });
+    });
+
+  res.render('pages/nilai-overview', {
+    user: req.session.user,
+    summaries,
+    passingGrade
+  });
+}));
 
 app.get('/master-siswa', requireAuth, asyncHandler(async (req, res) => {
   const { collection } = await getCollection(STUDENT_COLLECTION);
@@ -162,6 +413,7 @@ app.post('/master-siswa/add', requireAuth, asyncHandler(async (req, res) => {
     name,
     class: cls,
     email,
+    subjects: [],
     createdAt: now,
     updatedAt: now
   });
@@ -223,37 +475,151 @@ app.post('/master-siswa/delete/:name', requireAuth, asyncHandler(async (req, res
   res.redirect('/master-siswa');
 }));
 
+app.get('/master-siswa/:name/subjects', requireAuth, asyncHandler(async (req, res) => {
+  const studentName = req.params.name;
+  const { student } = await getStudentRecordByName(studentName);
+
+  if (!student) {
+    return res.status(404).send('Data siswa tidak ditemukan.');
+  }
+
+  const passingGrade = getPassingGrade();
+  const subjects = normalizeSubjectsList(student.subjects, passingGrade);
+  const message = {
+    error: (req.query.error || '').toString(),
+    success: (req.query.success || '').toString()
+  };
+
+  res.render('pages/nilai-siswa', {
+    user: req.session.user,
+    student,
+    subjects,
+    passingGrade,
+    message
+  });
+}));
+
+app.post('/master-siswa/:name/subjects', requireAuth, asyncHandler(async (req, res) => {
+  const studentName = req.params.name;
+  const { db, student } = await getStudentRecordByName(studentName);
+
+  if (!student) {
+    return res.status(404).send('Data siswa tidak ditemukan.');
+  }
+
+  const subjectName = (req.body.subjectName || '').trim();
+  const note = (req.body.note || '').trim();
+  const score = clampScore(req.body.score);
+  const redirectBase = `/master-siswa/${encodeURIComponent(student.name)}/subjects`;
+
+  if (!subjectName) {
+    return res.redirect(`${redirectBase}?error=${encodeURIComponent('Nama mata pelajaran wajib diisi.')}`);
+  }
+
+  const subjects = ensureSubjectsArray(student);
+  subjects.push({
+    name: subjectName,
+    score,
+    note: note || undefined,
+    updatedAt: new Date().toISOString()
+  });
+
+  student.updatedAt = new Date().toISOString();
+  await writeDB(db);
+
+  return res.redirect(`${redirectBase}?success=${encodeURIComponent('Mata pelajaran berhasil ditambahkan.')}`);
+}));
+
+app.post('/master-siswa/:name/subjects/:index/delete', requireAuth, asyncHandler(async (req, res) => {
+  const studentName = req.params.name;
+  const index = Number(req.params.index);
+  const { db, student } = await getStudentRecordByName(studentName);
+
+  if (!student) {
+    return res.status(404).send('Data siswa tidak ditemukan.');
+  }
+
+  const redirectBase = `/master-siswa/${encodeURIComponent(student.name)}/subjects`;
+
+  if (!Number.isInteger(index) || index < 0) {
+    return res.redirect(`${redirectBase}?error=${encodeURIComponent('Data mata pelajaran tidak valid.')}`);
+  }
+
+  const subjects = ensureSubjectsArray(student);
+
+  if (!subjects[index]) {
+    return res.redirect(`${redirectBase}?error=${encodeURIComponent('Data mata pelajaran tidak ditemukan.')}`);
+  }
+
+  subjects.splice(index, 1);
+  student.updatedAt = new Date().toISOString();
+  await writeDB(db);
+
+  return res.redirect(`${redirectBase}?success=${encodeURIComponent('Mata pelajaran berhasil dihapus.')}`);
+}));
+
 app.get('/laporan-nilai', requireAuth, asyncHandler(async (req, res) => {
   const keywordRaw = (req.query.keyword || '').trim();
   const keyword = keywordRaw.toLowerCase();
   const { collection } = await getCollection(STUDENT_COLLECTION);
+  const passingGrade = getPassingGrade();
 
-  const filtered = keyword
-    ? collection.filter((student) => {
-        return (
-          student.name.toLowerCase().includes(keyword) ||
-          (student.class || '').toLowerCase().includes(keyword) ||
-          (student.email || '').toLowerCase().includes(keyword)
-        );
-      })
-    : collection;
+  const filteredStudents = collection.filter((student) => {
+    if (!keyword) return true;
+    const searchTargets = [
+      student.name,
+      student.class,
+      student.email
+    ];
 
-  const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+    const subjects = normalizeSubjectsList(student.subjects, passingGrade);
+    subjects.forEach((subject) => {
+      searchTargets.push(subject.name, subject.status, subject.note);
+      if (subject.score !== null && subject.score !== undefined) {
+        searchTargets.push(String(subject.score));
+      }
+    });
+
+    return searchTargets
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(keyword));
+  });
+
+  const sortedStudents = [...filteredStudents].sort((a, b) =>
+    a.name.localeCompare(b.name, 'id', { sensitivity: 'base' })
+  );
+
+  const reports = sortedStudents.map((student) => {
+    const subjects = normalizeSubjectsList(student.subjects, passingGrade);
+    const normalizedSubjects = subjects.length
+      ? subjects
+      : [{ index: null, name: '-', score: null, status: 'Belum ada penilaian', note: '' }];
+
+    return { student, subjects: normalizedSubjects };
+  });
 
   res.render('pages/laporan-nilai', {
     user: req.session.user,
-    students: sorted,
-    keyword: keywordRaw
+    reports,
+    keyword: keywordRaw,
+    passingGrade
   });
 }));
 
 app.post('/api/ask-ai', requireAuth, asyncHandler(async (req, res) => {
-  const { sourceText, question, gem } = req.body;
-  if (!sourceText || !question) {
-    return res.status(400).json({ error: 'Pertanyaan dan sumber teks tidak boleh kosong.' });
+  const { question, gem, materialId } = req.body;
+  const selectedGem = GEM_PERSONAS[gem] || GEM_PERSONAS['tutor-cerdas'];
+  const allMaterials = [...LEARNING_MATERIALS, ...CUSTOM_MATERIALS];
+  const material = materialId ? allMaterials.find((item) => item.id === materialId) : null;
+  const sourceText = material ? material.sourceText : (req.body.sourceText || '').trim();
+
+  if (!question) {
+    return res.status(400).json({ error: 'Pertanyaan tidak boleh kosong.' });
   }
 
-  const selectedGem = GEM_PERSONAS[gem] || GEM_PERSONAS['tutor-cerdas'];
+  if (!sourceText) {
+    return res.status(400).json({ error: 'Materi tidak ditemukan.' });
+  }
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -302,8 +668,4 @@ app.use((err, req, res, _next) => {
 
 app.listen(PORT, () => {
   console.log(`✅ Server listening on http://localhost:${PORT}`);
-});
-
-app.get('/debug/env', (req, res) => {
-  res.json({ port_env: process.env.PORT, db_path: process.env.DB_PATH });
 });

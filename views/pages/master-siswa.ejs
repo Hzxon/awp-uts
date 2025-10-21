@@ -13,9 +13,14 @@
             <div class="bg-white p-6 rounded-xl shadow-md">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-semibold">Data Master Siswa</h2>
+                    <div class="flex items-center gap-2">
+                        <a href="/nilai-siswa" class="px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-100 rounded-lg hover:bg-emerald-200 flex items-center">
+                            <i data-lucide="line-chart" class="w-4 h-4 mr-2"></i> Lihat Nilai
+                        </a>
                     <button onclick="openModal('add-student-modal')" class="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
                         <i data-lucide="plus" class="w-4 h-4 mr-2"></i> Tambah Siswa
                     </button>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left text-gray-500">
@@ -33,6 +38,14 @@
                                 <td class="px-6 py-4"><%= student.class %></td>
                                 <td class="px-6 py-4"><%= student.email %></td>
                                 <td class="px-6 py-4 text-center space-x-2">
+                                    <a
+                                        href="/master-siswa/<%= encodeURIComponent(student.name) %>/subjects"
+                                        class="inline-flex items-center justify-center text-emerald-600 hover:text-emerald-800"
+                                        title="Kelola Nilai"
+                                    >
+                                        <i data-lucide="book-open-check"></i>
+                                    </a>
+
                                     <button
                                     class="text-blue-600 hover:text-blue-800"
                                     data-name="<%= student.name %>"

@@ -1,0 +1,56 @@
+<%- include('../partials/header', { title: 'Tambah Materi AI' }) %>
+
+<div class="flex h-screen bg-gray-100">
+    <%- include('../partials/sidebar', { user, active: 'belajar-ai' }) %>
+
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <%- include('../partials/topbar', { user, pageTitle: 'Tambah Materi Belajar AI' }) %>
+
+        <main class="flex-1 p-6 overflow-y-auto">
+            <div class="max-w-3xl mx-auto">
+                <a href="/belajar-ai" class="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 mb-4">
+                    <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i> Kembali ke Belajar AI
+                </a>
+
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Materi Baru</h2>
+                    <p class="mt-1 text-sm text-gray-500">Isikan detail materi yang ingin kamu pelajari bersama AI.</p>
+
+                    <% if (error) { %>
+                        <div class="mt-4 bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                            <p class="text-sm font-medium"><%= error %></p>
+                        </div>
+                    <% } %>
+
+                    <form action="/belajar-ai/materials" method="POST" class="mt-6 space-y-5">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Judul Materi <span class="text-red-500">*</span></label>
+                            <input type="text" name="title" value="<%= form.title %>" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: Revolusi Industri" required>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Tema</label>
+                                <input type="text" name="theme" value="<%= form.theme %>" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: Sejarah">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Deskripsi Singkat</label>
+                                <input type="text" name="description" value="<%= form.description %>" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Ringkasan materi">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Isi Materi <span class="text-red-500">*</span></label>
+                            <textarea name="sourceText" rows="10" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Masukkan materi dalam bentuk paragraf" required><%= form.sourceText %></textarea>
+                            <p class="mt-2 text-xs text-gray-500">Gunakan paragraf lengkap agar jawaban AI tetap relevan dengan materi yang diberikan.</p>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <a href="/belajar-ai" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300">Batal</a>
+                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700">Simpan Materi</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<%- include('../partials/footer') %>

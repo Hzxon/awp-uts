@@ -1,8 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
 
-// Default lokal: tulis ke db.json di root project.
-// Di Railway: set env DB_PATH ke `/app/data/db.json`
 const DEFAULT_DB = path.join(__dirname, 'db.json');
 const DB_PATH = process.env.DB_PATH || DEFAULT_DB;
 

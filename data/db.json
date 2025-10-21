@@ -1,1 +1,32 @@
-{}
+{
+  "students": [
+    {
+      "id": "2c35b16e-a16c-4a9d-8566-4952f1b50da4",
+      "name": "Jiro Nathan Lee",
+      "class": "XI IPA 2",
+      "email": "nathan@gmail.com",
+      "createdAt": "2025-10-20T23:53:46.211Z",
+      "updatedAt": "2025-10-20T23:53:46.211Z"
+    },
+    {
+      "id": "e9bd7f1c-a233-4b64-b87e-bf9fbe8be22f",
+      "name": "asdfa",
+      "class": "asdf",
+      "email": "asd@yahoo.com",
+      "createdAt": "2025-10-20T23:54:15.134Z",
+      "updatedAt": "2025-10-21T00:27:22.669Z",
+      "subjects": [
+        {
+          "name": "Matematika",
+          "score": 80,
+          "updatedAt": "2025-10-21T00:21:30.291Z"
+        },
+        {
+          "name": "Fisika",
+          "score": 70,
+          "updatedAt": "2025-10-21T00:27:22.669Z"
+        }
+      ]
+    }
+  ]
+}

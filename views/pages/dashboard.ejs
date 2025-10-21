@@ -8,34 +8,78 @@
         <%- include('../partials/topbar', {user: user, pageTitle: 'Dashboard'}) %>
 
         <main class="flex-1 p-6 overflow-y-auto">
+             <% const metrics = stats || { totalStudents: 0, totalTeachers: null, totalSubjects: null, totalClasses: 0 }; %>
+             <% function formatNumber(val) { return typeof val === 'number' ? val.toLocaleString('id-ID') : '-'; } %>
+             <% const recent = Array.isArray(latestStudents) ? latestStudents : []; %>
              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                  <div class="p-6 bg-white rounded-xl shadow-md flex items-center space-x-4">
                      <div class="p-3 bg-blue-100 rounded-full"><i data-lucide="users" class="w-6 h-6 text-blue-600"></i></div>
                      <div>
                          <p class="text-gray-500">Total Siswa</p>
-                         <p class="text-2xl font-bold">1,250</p>
+                         <p class="text-2xl font-bold"><%= formatNumber(metrics.totalStudents) %></p>
                      </div>
                  </div>
                   <div class="p-6 bg-white rounded-xl shadow-md flex items-center space-x-4">
                      <div class="p-3 bg-green-100 rounded-full"><i data-lucide="user-check" class="w-6 h-6 text-green-600"></i></div>
                      <div>
                          <p class="text-gray-500">Total Guru</p>
-                         <p class="text-2xl font-bold">75</p>
+                         <p class="text-2xl font-bold"><%= formatNumber(metrics.totalTeachers) %></p>
+                         <% if (metrics.totalTeachers == null) { %>
+                             <p class="text-xs text-gray-400 mt-1">Set nilai melalui env <code>TEACHER_COUNT</code>.</p>
+                         <% } %>
                      </div>
                  </div>
                   <div class="p-6 bg-white rounded-xl shadow-md flex items-center space-x-4">
                      <div class="p-3 bg-yellow-100 rounded-full"><i data-lucide="book-open" class="w-6 h-6 text-yellow-600"></i></div>
                      <div>
                          <p class="text-gray-500">Mata Pelajaran</p>
-                         <p class="text-2xl font-bold">12</p>
+                         <p class="text-2xl font-bold"><%= formatNumber(metrics.totalSubjects) %></p>
+                         <% if (metrics.totalSubjects == null) { %>
+                             <p class="text-xs text-gray-400 mt-1">Set nilai melalui env <code>SUBJECT_COUNT</code>.</p>
+                         <% } %>
                      </div>
                  </div>
                  <div class="p-6 bg-white rounded-xl shadow-md flex items-center space-x-4">
                      <div class="p-3 bg-indigo-100 rounded-full"><i data-lucide="school" class="w-6 h-6 text-indigo-600"></i></div>
                      <div>
                          <p class="text-gray-500">Jumlah Kelas</p>
-                         <p class="text-2xl font-bold">30</p>
+                         <p class="text-2xl font-bold"><%= formatNumber(metrics.totalClasses) %></p>
                      </div>
+                 </div>
+             </div>
+
+             <div class="mt-8 bg-white rounded-xl shadow-md">
+                 <div class="p-6 border-b flex items-center justify-between">
+                     <h2 class="text-lg font-semibold">Siswa Terbaru</h2>
+                     <a href="/master-siswa" class="text-sm text-blue-600 hover:text-blue-700">Lihat semua</a>
+                 </div>
+                 <div class="p-6">
+                     <% if (recent.length) { %>
+                         <div class="overflow-x-auto">
+                             <table class="min-w-full text-sm text-left text-gray-500">
+                                 <thead class="text-xs uppercase bg-gray-50 text-gray-700">
+                                     <tr>
+                                         <th class="px-4 py-3">Nama</th>
+                                         <th class="px-4 py-3">Kelas</th>
+                                         <th class="px-4 py-3">Email</th>
+                                         <th class="px-4 py-3">Diupdate</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody>
+                                     <% recent.forEach((student) => { %>
+                                         <tr class="border-b last:border-b-0">
+                                             <td class="px-4 py-3 font-medium text-gray-900"><%= student.name %></td>
+                                             <td class="px-4 py-3"><%= student.class || '-' %></td>
+                                             <td class="px-4 py-3"><%= student.email || '-' %></td>
+                                             <td class="px-4 py-3"><%= student.displayUpdated || '-' %></td>
+                                         </tr>
+                                     <% }) %>
+                                 </tbody>
+                             </table>
+                         </div>
+                     <% } else { %>
+                         <p class="text-sm text-gray-500">Belum ada data siswa yang tersimpan.</p>
+                     <% } %>
                  </div>
              </div>
         </main>

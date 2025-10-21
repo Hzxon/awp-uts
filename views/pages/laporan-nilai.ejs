@@ -8,6 +8,7 @@
         <%- include('../partials/topbar', {user: user, pageTitle: 'Laporan Nilai'}) %>
 
         <main class="flex-1 p-6 overflow-y-auto">
+             <% const dataReports = Array.isArray(reports) ? reports : []; %>
              <div id="print-area" class="bg-white p-6 rounded-xl shadow-md">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <h2 class="text-lg font-semibold">Laporan Nilai Siswa</h2>
@@ -17,7 +18,7 @@
                                 type="text"
                                 name="keyword"
                                 value="<%= keyword || '' %>"
-                                placeholder="Cari nama / kelas / email"
+                                placeholder="Cari nama / kelas / email / mapel / nilai"
                                 class="border border-gray-300 rounded-lg px-3 py-2 w-full"
                             />
                             <button class="px-4 py-2 bg-blue-600 text-white rounded-lg">Cari</button>
@@ -43,28 +44,38 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <% students.forEach((student, index) => { 
-                                const nilai = Math.floor(Math.random() * 41) + 60; // Simulasi nilai 60-100
+                            <% const badgeClass = (status) => {
+                                 const normalized = (status || '').toLowerCase();
+                                 if (normalized === 'lulus') return 'text-green-800 bg-green-100';
+                                 if (normalized === 'remedial') return 'text-red-800 bg-red-100';
+                                 return 'text-gray-700 bg-gray-200';
+                               };
                             %>
-                            <tr class="bg-white border-b">
-                                <td class="px-6 py-4"><%= index + 1 %></td>
-                                <td class="px-6 py-4 font-medium text-gray-900"><%= student.name %></td>
-                                <td class="px-6 py-4"><%= student.class %></td>
-                                <td class="px-6 py-4">Matematika</td>
-                                <td class="px-6 py-4"><%= nilai %></td>
-                                <td class="px-6 py-4">
-                                    <% if (nilai >= 75) { %>
-                                        <span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Lulus</span>
-                                    <% } else { %>
-                                        <span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 rounded-full">Remedial</span>
-                                    <% } %>
-                                </td>
-                            </tr>
-                            <% }) %>
-                             <% if (students.length === 0) { %>
+                            <% if (dataReports.length === 0) { %>
                                 <tr>
                                     <td colspan="6" class="text-center py-10 text-gray-500">Data tidak ditemukan.</td>
                                 </tr>
+                            <% } else { %>
+                                <% dataReports.forEach((report, index) => { %>
+                                    <% const subjects = report.subjects || []; %>
+                                    <% subjects.forEach((subject, subjectIndex) => { %>
+                                        <tr class="bg-white border-b">
+                                            <% if (subjectIndex === 0) { %>
+                                                <td class="px-6 py-4 align-top" rowspan="<%= subjects.length %>"><%= index + 1 %></td>
+                                                <td class="px-6 py-4 align-top font-medium text-gray-900" rowspan="<%= subjects.length %>"><%= report.student.name %></td>
+                                                <td class="px-6 py-4 align-top" rowspan="<%= subjects.length %>"><%= report.student.class || '-' %></td>
+                                            <% } %>
+                                            <td class="px-6 py-4"><%= subject.name %></td>
+                                            <td class="px-6 py-4"><%= subject.score !== null && subject.score !== undefined ? subject.score : '-' %></td>
+                                            <td class="px-6 py-4">
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full <%= badgeClass(subject.status) %>"><%= subject.status %></span>
+                                                <% if (subject.note) { %>
+                                                    <div class="text-xs text-gray-400 mt-1"><%= subject.note %></div>
+                                                <% } %>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                <% }) %>
                             <% } %>
                         </tbody>
                     </table>

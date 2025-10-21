@@ -7,19 +7,55 @@
     <div class="flex-1 flex flex-col overflow-hidden">
         <%- include('../partials/topbar', {user: user, pageTitle: 'Belajar dengan AI'}) %>
 
-        <main class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 overflow-hidden">
-            <!-- Kolom Sumber Materi -->
+        <% const initialMaterial = (() => {
+            if (!materials || !materials.length) return null;
+            const selectedId = typeof selectedMaterialId !== 'undefined' ? selectedMaterialId : null;
+            if (!selectedId) return materials[0];
+            return materials.find((material) => material.id === selectedId) || materials[0];
+        })(); %>
+        <% const alerts = {
+            error: (typeof queryError !== 'undefined') ? queryError : (typeof error !== 'undefined' ? error : null),
+            success: (typeof querySuccess !== 'undefined') ? querySuccess : (typeof success !== 'undefined' ? success : null)
+        }; %>
+        <main class="flex-1 p-4 overflow-hidden space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">Pilih Materi dan Mulai Belajar</h2>
+                    <p class="text-sm text-gray-500">Ganti materi kapan saja, lalu ajukan pertanyaan ke AI assistant.</p>
+                </div>
+                <a href="/belajar-ai/materials/new" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700">
+                    <i data-lucide="book-plus" class="w-4 h-4 mr-2"></i> Tambah Materi
+                </a>
+            </div>
+
+            <% if (successMessage) { %>
+                <div class="bg-emerald-100 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg">
+                    <p class="text-sm font-medium"><%= successMessage %></p>
+                </div>
+            <% } %>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-[calc(100%-5rem)] md:h-[calc(100%-4rem)]">
             <div class="flex flex-col bg-white rounded-xl shadow-md overflow-hidden">
                 <div class="p-4 border-b">
                     <h2 class="font-semibold text-lg flex items-center"><i data-lucide="book-marked" class="w-5 h-5 mr-2 text-blue-600"></i> Sumber Materi</h2>
-                    <p class="text-sm text-gray-500">Proklamasi Kemerdekaan Indonesia</p>
+                    <p id="material-description" class="mt-1 text-sm text-gray-500"><%= initialMaterial ? initialMaterial.description : 'Belum ada materi yang tersedia.' %></p>
+                    <div class="mt-3">
+                        <label for="material-selector" class="text-sm font-medium text-gray-600">Pilih Materi:</label>
+                        <select id="material-selector" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" <%= !initialMaterial ? 'disabled' : '' %>>
+                            <% if (materials && materials.length) { %>
+                                <% materials.forEach((material) => { %>
+                                    <option value="<%= material.id %>"><%= material.title %></option>
+                                <% }) %>
+                            <% } else { %>
+                                <option>Belum ada materi</option>
+                            <% } %>
+                        </select>
+                        <p id="material-theme" class="mt-2 inline-flex items-center px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded-full">
+                            <%= initialMaterial ? initialMaterial.theme : 'N/A' %>
+                        </p>
+                    </div>
                 </div>
-                <div id="source-text" class="p-4 overflow-y-auto text-sm text-gray-700 leading-relaxed">
-                    <p><strong>Proklamasi Kemerdekaan Indonesia</strong> dilaksanakan pada hari Jumat, 17 Agustus 1945 tahun Masehi, atau tanggal 17 Agustus 2605 menurut tahun Jepang, yang dibacakan oleh Soekarno dengan didampingi oleh Drs. Mohammad Hatta di sebuah rumah hibah dari Faradj bin Said bin Awadh Martak di Jalan Pegangsaan Timur No. 56, Jakarta Pusat.</p>
-                    <p class="mt-4">Naskah proklamasi ditandatangani oleh Soekarno (yang menuliskan namanya sebagai "Soekarno") dan Mohammad Hatta (yang menuliskan namanya sebagai "Moh. Hatta"). Naskah tersebut diketik oleh Sayuti Melik. Pada awalnya, proklamasi akan dibacakan di Lapangan Ikada, namun berhubung alasan keamanan maka dipindahkan ke kediaman Soekarno.</p>
-                    <p class="mt-4">Penyusunan teks Proklamasi dilakukan di rumah Laksamana Tadashi Maeda, seorang perwira tinggi Angkatan Laut Kekaisaran Jepang. Tiga orang yang menyusunnya adalah Soekarno, Mohammad Hatta, dan Achmad Soebardjo. Konsep naskah ditulis oleh Soekarno sendiri. Di ruang makan Maeda, hadir pula B.M. Diah, Sayuti Melik, Soekarni, dan Soediro. Soekarni mengusulkan agar yang menandatangani teks proklamasi adalah Soekarno dan Mohammad Hatta atas nama bangsa Indonesia.</p>
-                    <p class="mt-4">Bendera Pusaka, Sang Saka Merah Putih, dijahit oleh Ibu Fatmawati dan dikibarkan setelah proklamasi dibacakan. Peristiwa ini menjadi tonggak sejarah dimulainya perlawanan diplomatik dan bersenjata dari Revolusi Nasional Indonesia, yang berperang melawan pasukan Belanda dan warga sipil pro-Belanda, hingga Belanda secara resmi mengakui kemerdekaan Indonesia pada tahun 1949.</p>
-                </div>
+                <div id="source-text" class="p-4 overflow-y-auto text-sm text-gray-700 leading-relaxed whitespace-pre-line"><%= initialMaterial ? initialMaterial.sourceText : 'Silakan tambahkan materi terlebih dahulu.' %></div>
             </div>
 
             <!-- Kolom Chat AI -->
@@ -54,25 +90,58 @@
                     </form>
                 </div>
             </div>
+            </div>
         </main>
     </div>
 </div>
 
 <script>
+    const materialsData = <%- JSON.stringify(materials || []) %>;
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-input');
     const chatHistory = document.getElementById('chat-history');
     const sourceTextContainer = document.getElementById('source-text');
     const submitButton = document.getElementById('chat-submit-button');
-    const gemSelector = document.getElementById('gem-selector'); // Mengambil elemen dropdown
+    const gemSelector = document.getElementById('gem-selector');
+    const materialSelector = document.getElementById('material-selector');
+    const materialDescription = document.getElementById('material-description');
+    const materialTheme = document.getElementById('material-theme');
+
+    function renderMaterial(materialId) {
+        const material = materialsData.find((item) => item.id === materialId);
+        if (!material) {
+            sourceTextContainer.textContent = 'Materi tidak ditemukan.';
+            materialDescription.textContent = 'Belum ada materi yang dipilih.';
+            materialTheme.textContent = 'N/A';
+            materialTheme.className = 'mt-2 inline-flex items-center px-2 py-1 text-xs font-semibold text-gray-600 bg-gray-200 rounded-full';
+            return;
+        }
+        sourceTextContainer.textContent = material.sourceText;
+        materialDescription.textContent = material.description;
+        materialTheme.textContent = material.theme;
+        materialTheme.className = 'mt-2 inline-flex items-center px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded-full';
+    }
+
+    if (materialsData.length && materialSelector) {
+        renderMaterial(materialSelector.value);
+        materialSelector.addEventListener('change', () => {
+            renderMaterial(materialSelector.value);
+            resetChatHistory();
+        });
+    }
 
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const question = chatInput.value.trim();
         if (!question) return;
 
-        const sourceText = sourceTextContainer.innerText;
-        const gem = gemSelector.value; // Mengambil persona yang dipilih
+        if (!materialsData.length) {
+            appendMessage('Belum ada materi yang dapat dipelajari saat ini.', 'ai');
+            return;
+        }
+
+        const gem = gemSelector.value; 
+        const materialId = materialSelector.value;
         
         appendMessage(question, 'user');
         chatInput.value = '';
@@ -84,7 +153,7 @@
             const response = await fetch('/api/ask-ai', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sourceText, question, gem }) // Mengirim persona ke backend
+                body: JSON.stringify({ materialId, question, gem }) 
             });
 
             removeLoadingIndicator();
@@ -104,6 +173,11 @@
             submitButton.disabled = false;
         }
     });
+
+    function resetChatHistory() {
+        chatHistory.innerHTML = '';
+        appendMessage('Halo! Saya adalah asisten AI Anda. Silakan pilih persona, baca materi, dan ajukan pertanyaan apa pun yang Anda miliki.', 'ai');
+    }
 
     function appendMessage(text, sender, isLoading = false) {
         const messageWrapper = document.createElement('div');
@@ -154,4 +228,3 @@
 </style>
 
 <%- include('../partials/footer') %>
-
