@@ -7,8 +7,7 @@ const session = require('express-session');
 const { randomUUID } = require('crypto');
 const { pool } = require('./db');
 const api = require('./routes');
-const { getCollection, writeDB } = require('./db');
-const { getAllStudents, addStudent, updateStudent, deleteStudent } = require('./studentModel');
+const { getAllStudents, addStudent, updateStudent, deleteStudent, searchStudents } = require('./studentModel');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -282,27 +281,25 @@ app.post('/master-siswa/delete/:name', requireAuth, asyncHandler(async (req, res
 
 app.get('/laporan-nilai', requireAuth, asyncHandler(async (req, res) => {
   const keywordRaw = (req.query.keyword || '').trim();
-  const keyword = keywordRaw.toLowerCase();
-  const { collection } = await getCollection(STUDENT_COLLECTION);
-
-  const filtered = keyword
-    ? collection.filter((student) => {
-        return (
-          student.name.toLowerCase().includes(keyword) ||
-          (student.class || '').toLowerCase().includes(keyword) ||
-          (student.email || '').toLowerCase().includes(keyword)
-        );
-      })
-    : collection;
-
-  const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-
+  const students = await searchStudents(keywordRaw);
   res.render('pages/laporan-nilai', {
     user: req.session.user,
-    students: sorted,
+    students,
     keyword: keywordRaw
   });
 }));
+
+
+app.get('/debug/columns', async (req, res) => {
+  try {
+    const { pool } = require('./db');
+    const [rows] = await pool.query('DESCRIBE ms_student');
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ code: e.code, message: e.message, sql: e.sql });
+  }
+});
+
 
 app.post('/api/ask-ai', requireAuth, asyncHandler(async (req, res) => {
   const { sourceText, question, gem } = req.body;

@@ -1,2 +1,9 @@
 node_modules
 .env
+.env.local
+TIDB_CA_FILE
+*.pem
+
+# node
+node_modules
+npm-debug.log*

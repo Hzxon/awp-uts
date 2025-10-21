@@ -67,6 +67,49 @@ async function deleteStudent(name) {
   }
 }
 
-module.exports = { getAllStudents, addStudent, updateStudent, deleteStudent };
+// Escape karakter spesial untuk LIKE: % _ \  →  di-escape jadi \% \_ \\
+function escapeLike(raw) {
+  return raw.replace(/([_%\\])/g, '\\$1');
+}
+
+// Cari siswa berdasarkan keyword (opsional). Urutkan by name ASC.
+function escapeLike(raw) {
+  // Escape %, _ dan \ agar tidak jadi wildcard tak sengaja
+  return raw.replace(/([_%\\])/g, '\\$1');
+}
+
+async function searchStudents(keywordRaw) {
+  const q = (keywordRaw || '').trim();
+
+  if (!q) {
+    const [rows] = await pool.query(
+      'SELECT `name`, `class`, `email` FROM ms_student ORDER BY `name` ASC'
+    );
+    return rows;
+  }
+
+  const pat = `%${escapeLike(q)}%`;
+  const sql =
+    'SELECT `name`, `class`, `email` ' +
+    'FROM ms_student ' +
+    "WHERE `name`  LIKE ? ESCAPE '\\\\' " +   // <-- single quotes di SQL; \\ di JS → \ di SQL
+    "   OR `class` LIKE ? ESCAPE '\\\\' " +
+    "   OR `email` LIKE ? ESCAPE '\\\\' " +
+    'ORDER BY `name` ASC';
+
+  const [rows] = await pool.query(sql, [pat, pat, pat]);
+  return rows;
+}
+
+
+module.exports = {
+  getAllStudents,
+  addStudent,
+  updateStudent,
+  deleteStudent,
+  searchStudents,     // <— pastikan diekspor
+};
+
+
 
 

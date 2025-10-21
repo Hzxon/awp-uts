@@ -3,11 +3,11 @@ const fs = require('fs');
 const mysql = require('mysql2/promise');
 
 function loadCA() {
-  // Prioritas: pakai file kalau disediakan
+  // 1) Kalau ada file cert
   if (process.env.TIDB_CA_FILE && fs.existsSync(process.env.TIDB_CA_FILE)) {
     return fs.readFileSync(process.env.TIDB_CA_FILE, 'utf8');
   }
-  // Fallback: TIDB_CA dengan \n yang di-escape
+  // 2) Kalau CA disimpan di env sebagai satu baris dengan \n
   if (process.env.TIDB_CA) {
     return process.env.TIDB_CA.replace(/\\n/g, '\n');
   }
@@ -23,10 +23,10 @@ const pool = mysql.createPool({
   ssl: {
     minVersion: 'TLSv1.2',
     ca: loadCA(),
-    rejectUnauthorized: true
+    rejectUnauthorized: true,
   },
   waitForConnections: true,
-  connectionLimit: 10
+  connectionLimit: 10,
 });
 
 module.exports = { pool };
