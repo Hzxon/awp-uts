@@ -633,7 +633,7 @@ app.post('/api/ask-ai', requireAuth, asyncHandler(async (req, res) => {
     });
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-05-20';
+  const model = process.env.GEMINI_MODEL || 'gemini-3.0-pro-001';
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const payload = {
     contents: [{ parts: [{ text: `Teks Sumber:\n---\n${sourceText}\n---\nPertanyaan: ${question}` }] }],
